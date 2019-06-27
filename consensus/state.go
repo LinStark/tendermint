@@ -7,7 +7,16 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
-
+	"net/http"
+//	"io"
+	"strconv"
+	"encoding/json"
+	"encoding/hex"
+//	"strings"
+	"crypto/sha256"
+	"io/ioutil"
+	"io"
+	"os"
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -21,8 +30,8 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-)
 
+)
 //-----------------------------------------------------------------------------
 // Errors
 
@@ -66,6 +75,19 @@ type txNotifier interface {
 type evidencePool interface {
 	AddEvidence(types.Evidence) error
 }
+type RPCRequest struct {
+	JSONRPC string          `json:"jsonrpc"`
+	ID      string       `json:"id"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+}
+type STX struct{
+	Txtype string
+	Sender string
+	Receiver string
+	ID       [sha256.Size]byte
+	Content []string
+} 
 
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
@@ -336,9 +358,11 @@ go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without cor
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
 	cs.scheduleRound0(cs.GetRoundState())
-
+	
 	return nil
+	
 }
+
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
@@ -1360,7 +1384,235 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+	
+
+	//从数据库中的检查点中恢复数据
+	//cs.reactorViaCheckpoint(height)
+
+
 }
+
+func  (cs *ConsensusState)reactorViaCheckpoint(height int64){
+	if(height%20==0){
+		//一次checkpoint,更新
+		cpTxs:=cs.CheckBlockTxInfo(height)
+		cpTxs = Sendtxs(cpTxs) //TODO需要在分布式环境下测试
+		cptx:=conver2cptx(cpTxs,height)
+		Sendcptx(cptx,0) //TODO 改为一定要加入成功
+		
+	}
+}
+
+//有checkpoint过程
+func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
+	//input:最后一个区块高度
+	var tblock *types.Block
+	//从后往前遍历区块，直到找到checkpoint记录 
+	var waitComTxs []STX  //待确认的tx数组
+	var delTxs []STX //待删除的tx
+	flag := true
+	var lastCheckHeight int64 //上一次checkpoint的高度
+	lastCheckHeight=0
+	for i:=maxHeight ;i>lastCheckHeight;i--{
+		tblock = cs.blockStore.LoadBlock(i) //TODO
+		
+		//从最后一个区块开始遍历block数组
+		if(tblock.Data.Txs != nil ){
+			for i:=0;i<len(tblock.Data.Txs);i++{
+		
+				data := tblock.Data.Txs[i]
+				//遍历每个tblock中的TX
+				encodeStr:=hex.EncodeToString(data)
+				temptx, _ := hex.DecodeString(encodeStr)//得到真实的tx记录
+				
+				var t STX
+				json.Unmarshal(temptx, &t)
+				if (t.Txtype=="relaytx"){
+					//tblock.Shard="A" //TODO!!!!!!!!!!!!
+					if(t.Sender==tblock.Shard){
+					//如果是relaytx，并且是当前分片发起的，则加入到带确认数组
+						waitComTxs = append(waitComTxs, t)
+						
+					}
+				}else if(t.Txtype=="addtx"){
+					//如果是addtx
+					delTxs = append(delTxs,t) //删除数组中对应的tx，用ID查找
+				}else if(t.Txtype=="checkpoint"){
+					if(flag){
+						lastCheckHeight,_=strconv.ParseInt(t.Sender,10,64) //得到上一次检查点高度,保证只更新一次
+						flag = false
+					}
+					for j:=0;j<len(t.Content);j++{
+						var cpt STX
+						json.Unmarshal([]byte(t.Content[j]), &cpt)
+						waitComTxs = append(waitComTxs,cpt) //TODO 
+					}	
+					fmt.Println("length of waitComTxs is ",len(waitComTxs),"lastCheckHeight",lastCheckHeight)
+				}
+			}
+		}
+		
+	}
+	var cpTxs []STX
+	cpTxs = removeAddedTxs(waitComTxs,delTxs)
+	return cpTxs
+	//返回所有未确认的tx，后续需要重新发送这些交易
+
+}
+
+
+func  conver2cptx(cpTxs []STX,height int64) STX{
+	
+	var content []string
+	fmt.Println("cpTxs length is ",len(cpTxs))
+	for i:=0;i<len(cpTxs);i++{
+		marshalTx ,_:=json.Marshal(cpTxs[i])
+		content=append(content,string(marshalTx))
+	}
+	cptx :=&STX{
+		Txtype:"checkpoint",
+		Sender: strconv.FormatInt(height,10), //用sender记录高度
+		Receiver: "",
+		ID      : sha256.Sum256([]byte("checkpoint")),
+		Content :content} 
+    return *cptx
+}
+
+func Get(key string)(value string){
+
+	A := "192.168.5.56"
+	B := "192.168.5.57"
+	C := "192.168.5.58"
+	D := "192.168.5.60"
+	if key == "A"{
+		value = A
+	}else if key=="B"{
+		value = B
+	}else if key=="C"{
+		value = C
+	}else {
+		value = D
+	}
+	return value
+}
+func Sendtxs(cptxs []STX) []STX {
+
+	client := &http.Client{}
+	port:=[3]string{"26657","36657","46657"}
+	SiteIp:=""
+	var dID  [][32]byte
+	for  i:=0;i<len(cptxs);i++{
+		SiteIp = Get(cptxs[i].Receiver)
+		res, _ := json.Marshal(cptxs[i])
+		requestBody := new(bytes.Buffer)
+		paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+		if err != nil {
+			fmt.Printf("failed to encode params: %v\n", err)
+			os.Exit(1)
+		}
+		rawParamsJSON := json.RawMessage(paramsJSON)
+		rc:=&RPCRequest{
+			JSONRPC: "2.0",
+			ID:      "tm-bench",
+			Method:  "broadcast_tx_commit",
+			Params:  rawParamsJSON,
+		}
+		json.NewEncoder(requestBody).Encode(rc)
+		url := "http://"+SiteIp+":"+port[i%len(port)]
+		req, err := http.NewRequest("POST", url, requestBody)
+		if err != nil {
+			panic(err)
+		}
+		response, _ := client.Do(req)
+		body, _ := ioutil.ReadAll(response.Body)
+		var f interface{}
+		jserror:= json.Unmarshal(body, &f)
+			if jserror != nil {
+				fmt.Println(jserror)
+			}
+		m := f.(map[string]interface{}) 
+		for k, v := range m {
+			if (k=="error"){
+				md, _ := v.(map[string]interface{})
+				if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
+					dID=append(dID,cptxs[i].ID)
+				}
+			}
+		}
+	}
+	for i :=0;i<len(dID);i++{
+		for j := 0; j < len(cptxs); j++ {
+			if cptxs[j].ID == dID[i] {
+				cptxs = append( cptxs[:j], cptxs[j+1:]...)
+				break
+			}
+		}
+	}
+
+	return cptxs
+
+}
+
+func  removeAddedTxs(waitComTxs []STX, delTxs []STX) []STX{
+	var cpTxs []STX
+	flag := true
+	for i :=0;i<len(waitComTxs);i++{
+		for j := 0; j < len(delTxs); j++ {
+			if(waitComTxs[i].ID==delTxs[j].ID){
+				flag =false
+				break
+			}
+		}
+		if(flag){
+			cpTxs=append(cpTxs,waitComTxs[i])
+		}
+	}
+	return cpTxs
+}
+
+func  Sendcptx(tx STX,flag int){
+
+	res, _ := json.Marshal(tx)
+	fmt.Println("-----------------sendcheckpointtx-----------------------")
+	client := &http.Client{}
+	requestBody := new(bytes.Buffer)
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	rawParamsJSON := json.RawMessage(paramsJSON)
+	rc:=&RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "tm-bench",
+		Method:  "broadcast_tx_commit",
+		Params:  rawParamsJSON,
+	}
+	json.NewEncoder(requestBody).Encode(rc)
+	port:=[3]string{"26657","36657","46657"}
+	url := "http://localhost:"+port[0]
+	req, err := http.NewRequest("POST", url, requestBody)
+	req.Header.Set("Content-Type", "application/json")
+
+	if err != nil {
+		panic(err)
+	}
+	//处理返回结果
+	response, _ := client.Do(req)
+
+	//将结果定位到标准输出 也可以直接打印出来 或者定位到其他地方进行相应的处理
+	stdout := os.Stdout
+	_, err = io.Copy(stdout, response.Body)
+
+	//返回的状态码
+	status := response.StatusCode
+
+	fmt.Println(status)
+
+}
+
+//-------------------------------------------------------------------------
+
 
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))

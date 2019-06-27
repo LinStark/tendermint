@@ -3,29 +3,20 @@ package state
 import (
 	"fmt"
 	"encoding/hex"
-	"strings"
 	"time"
-//	"context"
 	"encoding/json"
-//	"go.etcd.io/etcd/clientv3"
-//	alog "log"
-//	"math/rand"
-//	"net"
-//	"os"
-//	"strconv"
-	"net/http"
-//	"io"
 	"io/ioutil"
-	
-	
-
-
+	"os"
+	"net/http"
+	"bytes"
 	abci "github.com/tendermint/tendermint/abci/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tp "github.com/tendermint/tendermint/identypes"
+
 )
 
 //-----------------------------------------------------------------------------
@@ -53,6 +44,7 @@ type BlockExecutor struct {
 
 	metrics *Metrics
 }
+
 
 type BlockExecutorOption func(executor *BlockExecutor)
 
@@ -199,13 +191,14 @@ func (blockExec *BlockExecutor) CheckRelayTxs(block *types.Block){
 	
 	fmt.Println("-------------Begin check Relay Txsc----------")
 	resendTxs:=blockExec.UpdateRelaytxDB()  //检查状态数据库，没有及时确认的relayTxs需要重新发送relaytxs
+	client := &http.Client{}
 	if (len(resendTxs)>0){
 		for i :=0;i<len(resendTxs);i++{
-			tx:=ChangeStr2Tx(resendTxs[i])
-			go blockExec.Sendtxs(tx,i%3)		
+			go blockExec.Sendtxs(resendTxs[i],i%3,client)		
 		}
 		
 	}
+
 	//对当前提交的块检查，看是否有新的relayTxs产生
 	sendtxs,receivetxs := blockExec.CheckCommitedBlock(block)
 	if(sendtxs!=nil){
@@ -214,92 +207,98 @@ func (blockExec *BlockExecutor) CheckRelayTxs(block *types.Block){
 	if(receivetxs!=nil){
 		blockExec.SendAddedRelayTxs(receivetxs) //如果该分区收到的relaytx已经add，向发送的分区回复
 	}
+	//每20个，更新一次checkpoint
+	if(block.Height%20==0){
+		cpTxs:=	blockExec.GetAllTxs()
+		cptx:=conver2cptx(cpTxs,block.Height)
+		Sendcptx(cptx,0) //TODO 改为一定要加入成功 
+	}
+}
 
-}
-/*
-tx的交易形式有三种：
-类型是string
-普通tx：
-	tx=内容
-跨片tx：
-	relayTx,A,B=内容
-	addTx,A,B = 内容
-*/
-type TX struct{
-	Txtype string
-	Sender string
-	Receiver string
-	Content string
-} //这格式只在relay tx相关的内容中使用
-func ChangeStr2Tx(txstr string ) (TX){
-	part := strings.Split(txstr,"=")
-	header :=strings.Split(part[0],",")
-	tx :=TX{header[0],header[1],header[2],part[1]}
-	return tx
-}
-func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]TX,[]TX){ //判断relay tx是否存在
+
+func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,[]tp.TX){ //判断relay tx是否存在
 	//检查block中所有的tx是否包含relay TX
 	//返回两种，新加入到分区的和已被确认的relaytx
 	fmt.Println("CheckCommitedBlock")
-	var sendtxs []TX
-	var receivetxs []TX
+	var sendtxs []tp.TX
+	var receivetxs []tp.TX
 	if(block.Data.Txs != nil ){
 		for i:=0;i<len(block.Data.Txs);i++{
 
 			data := block.Data.Txs[i]
 			encodeStr:=hex.EncodeToString(data)
-			temptx, _ := hex.DecodeString(encodeStr)
-			//temptx, _ := hex.DecodeString(datastr)//得到真实的tx记录
-			realtx :=string(temptx)
-			//fmt.Println(datastr)
-			fmt.Println(realtx)
-			part := strings.Split(realtx,"=")
+			temptx, _ := hex.DecodeString(encodeStr)//得到真实的tx记录
+			fmt.Println(string(temptx))
+			var t tp.TX
+			json.Unmarshal(temptx, &t) 
 			
-			if len(part[0])==11{  
-				if string(part[0][8])==block.Shard{
-					sendtxs=append(sendtxs,ChangeStr2Tx(realtx))
-					blockExec.Add2RelaytxDB(realtx)
-				}else{
-					receivetxs=append(receivetxs,ChangeStr2Tx(realtx)) 
-
+			if(t.Txtype=="tx"){
+				continue
+			}else if(t.Txtype=="relaytx"){
+				if(t.Sender==block.Shard){
+					sendtxs=append(sendtxs,t)
+					blockExec.Add2RelaytxDB(t)
+				}else if(t.Receiver==block.Shard){
+					receivetxs=append(receivetxs,t) 
 				}
-			}else if len(part[0])==9{
-				blockExec.RemoveFromRelaytxDB(realtx)
+			}else if(t.Txtype=="addtx"){
+				blockExec.RemoveFromRelaytxDB(t)
+				//continue
+
+			}else if(t.Txtype=="checkpoint"){
+				continue
+				//重新发送内容
+				/*
+				if (len(t.Content)>0){
+					for i :=0;i<len(t.Content);i++{
+						var reAddTx TX
+						json.Unmarshal([]byte(t.Content[i]), &reAddTx)
+						go blockExec.Sendtxs(reAddTx,i%3)		
+					}
+				
+					
+				}*/
 			}
 		}
 	}
 	return sendtxs,receivetxs
 }
 
-func (blockExec *BlockExecutor) Add2RelaytxDB(tx string){
+func (blockExec *BlockExecutor) Add2RelaytxDB(tx tp.TX){
 	fmt.Println("Add2RelaytxDB")
 	blockExec.mempool.AddRelaytxDB(tx)
 }
-func  (blockExec *BlockExecutor) RemoveFromRelaytxDB(tx string){
+func  (blockExec *BlockExecutor) RemoveFromRelaytxDB(tx tp.TX){
 	fmt.Println("RemoveFromRelaytxDB")
 	blockExec.mempool.RemoveRelaytxDB(tx)
 }
-func (blockExec *BlockExecutor) UpdateRelaytxDB()([]string){
+func (blockExec *BlockExecutor) UpdateRelaytxDB()([]tp.TX){
 	fmt.Println("UpdateRelaytxDB")
 	resendTxs:=blockExec.mempool.UpdaterDB()
 	return resendTxs
 }
+func (blockExec *BlockExecutor) GetAllTxs()([]tp.TX){
+	fmt.Println("GetAllTxs")
+	cpTxs:=blockExec.mempool.GetAllTxs()
+	return cpTxs
+}
 
-func (blockExec *BlockExecutor) SendRelayTxs(txs []TX){
+func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX){
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
-	var shard_send [4][]TX
+	var shard_send [4][]tp.TX
 	//将需要跨片的交易按分片归类
 	for i:=0;i<len(txs);i++{
 		flag := int(txs[i].Receiver[0])-65
 		shard_send[flag]=append(shard_send[flag],txs[i])
 	}
+	client := &http.Client{}
 	for i :=0;i<len(shard_send);i++{
 		if(shard_send[i]!=nil){
 			num:=len(shard_send[i])
 			if(num>0){
 				for j:=0;j<num;j++{
-						go blockExec.Sendtxs(shard_send[i][j],j%3)
+						go blockExec.Sendtxs(shard_send[i][j],j%3,client)
 				}
 			}
 
@@ -307,29 +306,33 @@ func (blockExec *BlockExecutor) SendRelayTxs(txs []TX){
 	}
 }
 
-func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []TX){
+func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []tp.TX){
 	//向发送来的分片中返回确认消息
 	fmt.Println("SendAddedRelayTxs")
 	//暂时定义分片有4个
-	var shard_send [4][]TX
+	var shard_send [4][]tp.TX
 	//将需要跨片的交易按分片归类
 	for i:=0;i<len(txs);i++{
 		flag := int(txs[i].Receiver[0])-65
 		txs[i].Txtype = "addTx"
 		shard_send[flag]=append(shard_send[flag],txs[i])
 	}
+	client := &http.Client{}
 	for i :=0;i<len(shard_send);i++{
 		if(shard_send[i]!=nil){
 			num:=len(shard_send[i])
 			if(num>0){
 				for j:=0;j<num;j++{
-						go blockExec.Sendtxs(shard_send[i][j],j%3)
+						go blockExec.Sendtxs(shard_send[i][j],j%3,client)
 				}
 			}
 
 		}
 	}
 }
+
+
+
 
 //---------------------------------------------------------------------------
 //ETCD
@@ -385,61 +388,68 @@ func Get(key string)(value string){
 	}
 	return value
 }
-func (blockExec *BlockExecutor) Sendtxs(tx TX,flag int){
+func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 	SiteIp:=""
-	if tx.Txtype=="addTx"{
+	if tx.Txtype=="addtx"{
 		SiteIp = Get(tx.Sender)
 	} else{
 		SiteIp = Get(tx.Receiver)
 	}
-	tx1:=`"`+tx.Txtype+","+tx.Sender+","+tx.Receiver+"="+tx.Content+`"`
+	res, _ := json.Marshal(tx)
+	fmt.Println(string(res))
 	
-	blockExec.Send2TEN(tx1,SiteIp,flag)
+	blockExec.Send2TEN(tx,SiteIp,flag,client)
 
 }
-func (blockExec *BlockExecutor) Send2TEN(tx1 string,ip string,flag int){
-	client := &http.Client{}
+type RPCRequest struct {
+	JSONRPC string          `json:"jsonrpc"`
+	ID      string       `json:"id"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+}
+func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
 
-	//生成要访问的url
+	res, _ := json.Marshal(tx)
+	requestBody := new(bytes.Buffer)
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	rawParamsJSON := json.RawMessage(paramsJSON)
+	rc:=&RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "tm-bench",
+		Method:  "broadcast_tx_commit",
+		Params:  rawParamsJSON,
+	}
+	json.NewEncoder(requestBody).Encode(rc)
 	port:=[3]string{"26657","36657","46657"}
-	url := "http://"+ip+":"+port[flag]+"/broadcast_tx_commit?tx="
-	url=url+tx1
-	//提交请求
-	reqest, err := http.NewRequest("POST", url, nil)
-
+	url := "http://"+ip+":"+port[flag]
+	req, err := http.NewRequest("POST", url, requestBody)
+	req.Header.Set("Content-Type", "application/json")
+	
 	if err != nil {
 		panic(err)
 	}
-
-	//处理返回结果
-	response, _ := client.Do(reqest)
-
-	//将结果定位到标准输出 也可以直接打印出来 或者定位到其他地方进行相应的处理
-	//stdout := os.Stdout
-	//_, err = io.Copy(stdout, response.Body)
-
-	//返回的状态码
-	//status := response.StatusCode
+	response, _ := client.Do(req)
 	body, _ := ioutil.ReadAll(response.Body)
 	var f interface{}
-	jserror := json.Unmarshal(body, &f)
-        if jserror != nil {
-        	fmt.Println(jserror)
-        }
+	jserror:= json.Unmarshal(body, &f)
+		if jserror != nil {
+			fmt.Println(jserror)
+		}
 	m := f.(map[string]interface{}) 
 	for k, v := range m {
 		if (k=="error"){
 			md, _ := v.(map[string]interface{})
 			if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
-				ntx:=tx1[1:len(tx1)-1]
-				blockExec.RemoveFromRelaytxDB(ntx)	
+				blockExec.RemoveFromRelaytxDB(tx)
 			}
-	
 		}
-
 	}
+	
 
-	//fmt.Println(status)
 }
 //----------------------------------------------------------------------------
 

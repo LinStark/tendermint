@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	tp "github.com/tendermint/tendermint/identypes"
 )
 
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
@@ -201,12 +202,12 @@ type Mempool struct {
 //--------------------------------------------
 //新增的跨片交易的状态数据库
 type relaytxDB struct{
-	relaytx []RelayTx  //RelayTx结构的切片
+	relaytx []RTx  //RelayTx结构的切片
 }
-type RelayTx struct{
-	ID [sha256.Size]byte  //tx经过hash编码之后得到的值
-	Height int //等到块高为20的时候，再重新发布relaytx一次
-	tx string  //完整的tx内容，重新发送的时候需要用到	
+
+type RTx struct{
+	Tx tp.TX
+	Height int
 }
 //-------------------------------------------
 
@@ -247,31 +248,21 @@ func NewMempool(
 //新增函数
 func newrDB() relaytxDB{
 	var rdb relaytxDB
-	var rtx []RelayTx
+	var rtx []RTx
 	rdb.relaytx = rtx
 	return rdb
 }
 
-func  (mem *Mempool)AddRelaytxDB(tx string){
-	var rtx RelayTx
-	content:=tx[12:]
-	rtx.ID = sha256.Sum256([]byte(content))
-	rtx.Height = 0
-	rtx.tx = tx
+func  (mem *Mempool)AddRelaytxDB(tx  tp.TX){
+	var rtx RTx
+	rtx.Tx=tx
+	rtx.Height=0
 	mem.rDB.relaytx = append(mem.rDB.relaytx,rtx)
 
 }
-func (mem *Mempool) RemoveRelaytxDB(tx string){
-	headstr:=tx[:5]
-	var content string
-	if(headstr=="relay"){
-		content=tx[12:]
-	}else{
-		content=tx[10:]
-	}
-	hashID := sha256.Sum256([]byte(content))
+func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
-		if mem.rDB.relaytx[i].ID == hashID {
+		if mem.rDB.relaytx[i].Tx.ID == tx.ID {
 			mem.rDB.relaytx = append(mem.rDB.relaytx[:i], mem.rDB.relaytx[i+1:]...)
 			i--
 			fmt.Println("succ add the rtx")
@@ -281,24 +272,32 @@ func (mem *Mempool) RemoveRelaytxDB(tx string){
 	
 	
 }
-func (mem *Mempool) UpdaterDB()([]string){
+func (mem *Mempool) UpdaterDB()([]tp.TX){
 	//检查rDB中的状态，如果有一个区块高度是100，还没有被删除，那么需要重新发送tx，让其被确认
 	
-	var str []string	
+	var stx []tp.TX	
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
 		if mem.rDB.relaytx!=nil{
 			if mem.rDB.relaytx[i].Height == 20{
-				str= append(str,mem.rDB.relaytx[i].tx)
+				stx= append(stx,mem.rDB.relaytx[i].Tx)
 				mem.rDB.relaytx[i].Height=0	
 			}else {
 				mem.rDB.relaytx[i].Height =mem.rDB.relaytx[i].Height +1
 			}
 		}
 	}
-	return str
+	return stx
 	
 }
-
+func (mem *Mempool) GetAllTxs()([]tp.TX){
+	var alltx []tp.TX
+	for i := 0; i < len(mem.rDB.relaytx); i++ {
+		if mem.rDB.relaytx!=nil{
+			alltx= append(alltx,mem.rDB.relaytx[i].Tx)
+		}
+	}	
+	return alltx
+}
 //----------------------------------------------------------
 // EnableTxsAvailable initializes the TxsAvailable channel,
 // ensuring it will trigger once every height when transactions are available.

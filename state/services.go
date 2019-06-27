@@ -3,7 +3,8 @@ package state
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/mempool"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types"	
+	tp "github.com/tendermint/tendermint/identypes"
 )
 
 //------------------------------------------------------
@@ -21,9 +22,10 @@ type Mempool interface {
 	Lock()
 	Unlock()
 
-	AddRelaytxDB(tx string)
-	RemoveRelaytxDB(tx string)
-	UpdaterDB() []string
+	AddRelaytxDB(tx tp.TX)
+	RemoveRelaytxDB(tx tp.TX)
+	UpdaterDB() []tp.TX
+	GetAllTxs() []tp.TX
 
 	Size() int
 	CheckTx(types.Tx, func(*abci.Response)) error
@@ -65,9 +67,11 @@ func (MockMempool) Flush()                        {}
 func (MockMempool) FlushAppConn() error           { return nil }
 func (MockMempool) TxsAvailable() <-chan struct{} { return make(chan struct{}) }
 func (MockMempool) EnableTxsAvailable()           {}
-func (MockMempool) AddRelaytxDB(tx string){}
-func (MockMempool) RemoveRelaytxDB(tx string){}
-func (MockMempool) UpdaterDB() []string           {var str []string
+func (MockMempool) AddRelaytxDB(tx tp.TX){}
+func (MockMempool) RemoveRelaytxDB(tx tp.TX){}
+func (MockMempool) UpdaterDB() []tp.TX           {var str []tp.TX
+return str} 
+func (MockMempool) GetAllTxs() []tp.TX           {var str []tp.TX
 return str} 
 //------------------------------------------------------
 // blockstore
