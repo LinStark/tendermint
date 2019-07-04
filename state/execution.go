@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tp "github.com/tendermint/tendermint/identypes"
+	useetcd "github.com/tendermint/tendermint/useetcd"
 
 )
 
@@ -177,8 +178,11 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 	//从这里开始添加新的函数
-	blockExec.CheckRelayTxs(block)
-
+	//检查自己身份，判断是否是leader,如果是leader再执行检查
+	flag:=true
+	if flag {
+		blockExec.CheckRelayTxs(block)
+	}
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
@@ -336,41 +340,26 @@ func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []tp.TX){
 
 //---------------------------------------------------------------------------
 //ETCD
-/*
-func Get(endpoints []string,key string)(value []byte){
-	cli,err := clientv3.New(clientv3.Config{
-		Endpoints:endpoints,
-		DialKeepAliveTime:5*time.Second,
-	})
-	key = "/"+key
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := cli.Get(ctx,key)
-	cancel()
-	if err != nil {
-		fmt.Println("get failed, err:", err)
-		return
+
+
+
+func (blockExec *BlockExecutor)Sendtxs(tx tp.TX,flag int,client *http.Client){
+	SiteIp:=""
+	e:=useetcd.Use_Etcd{
+ 		 Endpoints:[]string{"192.168.5.56:2379"},
 	}
-	for _, ev := range resp.Kvs {
-		b:=ev.Value
-		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
-		return b
+	fmt.Println("tx.Sender",tx.Sender,"tx.Receiver",tx.Receiver,"Txtype",tx.Txtype)
+	if tx.Txtype=="addTx"{
+		SiteIp = string(e.Query(tx.Sender))
+	} else{
+		SiteIp = string(e.Query(tx.Receiver))
 	}
-	return
+	fmt.Println(SiteIp)
+	blockExec.Send2TEN(tx,SiteIp,flag,client)
 }
 
-func Sendtxs(tx TX){
-	SiteIp:=""
-	endpoints :=[]string{"192.168.5.56:2378"}
-	if tx.Txtype=="addTx"{
-		SiteIp = string(Get(endpoints,tx.Sender))
-	} else{
-		SiteIp = string(Get(endpoints,tx.Receiver))
-	}
-	tx1:=`"`+tx.Txtype+","+tx.Sender+","+tx.Receiver+"="+tx.Content+`"`
-	Send2TEN(tx1,SiteIp)
-}
-*/
 //替代etcd，加了etcd时长变长，容易出现超时错误
+/*
 func Get(key string)(value string){
 
 	A := "192.168.5.56"
@@ -401,6 +390,7 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 	blockExec.Send2TEN(tx,SiteIp,flag,client)
 
 }
+*/
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      string       `json:"id"`
@@ -424,8 +414,8 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 		Params:  rawParamsJSON,
 	}
 	json.NewEncoder(requestBody).Encode(rc)
-	port:=[3]string{"26657","36657","46657"}
-	url := "http://"+ip+":"+port[flag]
+	url := "http://"+ip
+	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
 	

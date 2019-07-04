@@ -228,8 +228,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		validatorSet = types.NewValidatorSet(validators)
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
-	fmt.Println(nextValidatorSet)
-	fmt.Println(validatorSet)
+	
 	return State{
 		Version: initStateVersion,
 		ChainID: genDoc.ChainID,

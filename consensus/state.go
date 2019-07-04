@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"encoding/hex"
 //	"strings"
+	"syscall"
 	"crypto/sha256"
 	"io/ioutil"
 	"io"
@@ -30,6 +31,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	useetcd "github.com/tendermint/tendermint/useetcd"
 
 )
 //-----------------------------------------------------------------------------
@@ -913,6 +915,10 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 	logger.Debug("This node is a validator")
 
+	if height == 1{
+		//如果高度为1并且是leader，则需要向etcd中更新地址
+		cs.sendLeaderToEtcd(address)	
+	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		cs.decideProposal(height, round)
@@ -923,6 +929,24 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 func (cs *ConsensusState) isProposer(address []byte) bool {
 	return bytes.Equal(cs.Validators.GetProposer().Address, address)
+}
+
+func (cs *ConsensusState)sendLeaderToEtcd(address []byte){
+
+	if cs.isProposer(address){
+		e:=useetcd.Use_Etcd{
+	 		 Endpoints:[]string{"192.168.5.56:2379"},
+		}
+		e.Update(getShard(),getPort())
+	}
+}
+func getPort()(string){
+	v, _ := syscall.Getenv("PORT")
+	return v
+}
+func getShard()(string){
+	v, _ := syscall.Getenv("TASKID")
+	return v
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
@@ -2013,3 +2037,4 @@ func CompareHRS(h1 int64, r1 int, s1 cstypes.RoundStepType, h2 int64, r2 int, s2
 	}
 	return 0
 }
+

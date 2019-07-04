@@ -479,3 +479,4 @@ func (m *bcStatusResponseMessage) ValidateBasic() error {
 func (m *bcStatusResponseMessage) String() string {
 	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
 }
+
