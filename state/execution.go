@@ -119,7 +119,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
-func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, block *types.Block) (State, error) {
+func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, block *types.Block, flag bool) (State, error) {
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, ErrInvalidBlock(err)
@@ -139,7 +139,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	saveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
-
+	
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
@@ -159,13 +159,11 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
-
 	// Lock mempool, commit app state, update mempoool.
 	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
-
 
 	// Update evpool with the block and state.
 	blockExec.evpool.Update(block, state)
@@ -179,7 +177,6 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 	//从这里开始添加新的函数
 	//检查自己身份，判断是否是leader,如果是leader再执行检查
-	flag:=true
 	if flag {
 		blockExec.CheckRelayTxs(block)
 	}

@@ -44,7 +44,7 @@ func TestApplyBlock(t *testing.T) {
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 	//nolint:ineffassign
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(state, blockID, block,false)
 	require.Nil(t, err)
 
 	// TODO check state and mempool
@@ -329,7 +329,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 		{PubKey: types.TM2PB.PubKey(pubkey), Power: 10},
 	}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
+	state, err = blockExec.ApplyBlock(state, blockID, block,false)
 	require.Nil(t, err)
 
 	// test new validator was added to NextValidators
@@ -377,7 +377,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		{PubKey: types.TM2PB.PubKey(state.Validators.Validators[0].PubKey), Power: 0},
 	}
 
-	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
+	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block,false) })
 	assert.NotNil(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 

@@ -1376,11 +1376,12 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
+	flag :=cs.isLeader()
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block)
+	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block,flag)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1414,6 +1415,11 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	//cs.reactorViaCheckpoint(height)
 
 
+}
+func(cs *ConsensusState) isLeader()(flag bool){
+	address := cs.privValidator.GetPubKey().Address()
+	flag = cs.isProposer(address)
+	return flag
 }
 
 func  (cs *ConsensusState)reactorViaCheckpoint(height int64){
