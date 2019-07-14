@@ -98,3 +98,15 @@ func (e Use_Etcd)Query(key string)(value []byte){
 	}
 	return
 }
+
+
+func (e Use_Etcd)PingLeader(key string)(flag bool){
+	leader_is_alive:=true //TODO
+	if leader_is_alive{
+	
+		flag = true
+	}else{
+		flag = false	
+	}
+	return flag
+}

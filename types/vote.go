@@ -159,3 +159,4 @@ func (vote *Vote) ValidateBasic() error {
 	}
 	return nil
 }
+

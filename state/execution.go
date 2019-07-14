@@ -1,23 +1,23 @@
 package state
 
 import (
-	"fmt"
-	"encoding/hex"
-	"time"
-	"encoding/json"
-	"io/ioutil"
-	"os"
-	"net/http"
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"time"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	tp "github.com/tendermint/tendermint/identypes"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tp "github.com/tendermint/tendermint/identypes"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-
 )
 
 //-----------------------------------------------------------------------------
@@ -45,7 +45,6 @@ type BlockExecutor struct {
 
 	metrics *Metrics
 }
-
 
 type BlockExecutorOption func(executor *BlockExecutor)
 
@@ -102,8 +101,23 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, state.Validators.Size(), len(evidence))
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-
 	return state.MakeBlock(height, txs, commit, evidence, proposerAddr)
+}
+
+func (blockExec *BlockExecutor) CreateChangeProposalBlock(
+	height int64,
+	state State, commit *types.Commit,
+	proposerAddr []byte,
+) (*types.Block, *types.PartSet) {
+	//产生更换leader的新的proposal区块
+	maxBytes := state.ConsensusParams.Block.MaxBytes
+
+	// Fetch a limited amount of valid evidence
+	maxNumEvidence, _ := types.MaxEvidencePerBlock(maxBytes)
+	evidence := blockExec.evpool.PendingEvidence(maxNumEvidence)
+	txs := make([]types.Tx, 0, 1)
+
+	return state.MakeChangeBlock(height, txs, commit, evidence, proposerAddr)
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -139,7 +153,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	saveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
-	
+
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
 	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
@@ -159,6 +173,8 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
+	fmt.Println("next---------", state.NextValidators)
+	fmt.Println("now---------", state.Validators)
 	// Lock mempool, commit app state, update mempoool.
 	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
@@ -186,120 +202,122 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	return state, nil
 }
+
 //------------------------------------------------------
 //检查是否有跨链交易产生，对其进行后续处理
-func (blockExec *BlockExecutor) CheckRelayTxs(block *types.Block){
-	
+func (blockExec *BlockExecutor) CheckRelayTxs(block *types.Block) {
+
 	fmt.Println("-------------Begin check Relay Txsc----------")
-	resendTxs:=blockExec.UpdateRelaytxDB()  //检查状态数据库，没有及时确认的relayTxs需要重新发送relaytxs
-	client := &http.Client{}
-	if (len(resendTxs)>0){
-		for i :=0;i<len(resendTxs);i++{
-			go blockExec.Sendtxs(resendTxs[i],i%3,client)		
+	/*
+		resendTxs:=blockExec.UpdateRelaytxDB()  //检查状态数据库，没有及时确认的relayTxs需要重新发送relaytxs
+		client := &http.Client{}
+		if (len(resendTxs)>0){
+			for i :=0;i<len(resendTxs);i++{
+				go blockExec.Sendtxs(resendTxs[i],i%3,client)
+			}
+
 		}
-		
-	}
+	*/
 
 	//对当前提交的块检查，看是否有新的relayTxs产生
-	sendtxs,receivetxs := blockExec.CheckCommitedBlock(block)
-	if(sendtxs!=nil){
+	sendtxs, receivetxs := blockExec.CheckCommitedBlock(block)
+	if sendtxs != nil {
 		blockExec.SendRelayTxs(sendtxs) //如果有relaytx,向其他分区发送交易（地址可以通过relaytx的格式解析）
 	}
-	if(receivetxs!=nil){
+	if receivetxs != nil {
 		blockExec.SendAddedRelayTxs(receivetxs) //如果该分区收到的relaytx已经add，向发送的分区回复
 	}
 	//每20个，更新一次checkpoint
-	if(block.Height%20==0){
-		cpTxs:=	blockExec.GetAllTxs()
-		cptx:=conver2cptx(cpTxs,block.Height)
-		Sendcptx(cptx,0) //TODO 改为一定要加入成功 
+	if block.Height%20 == 0 {
+		cpTxs := blockExec.GetAllTxs()
+		cptx := conver2cptx(cpTxs, block.Height)
+		Sendcptx(cptx, 0) //TODO 改为一定要加入成功
 	}
 }
 
-
-func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,[]tp.TX){ //判断relay tx是否存在
+func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX, []tp.TX) { //判断relay tx是否存在
 	//检查block中所有的tx是否包含relay TX
 	//返回两种，新加入到分区的和已被确认的relaytx
 	fmt.Println("CheckCommitedBlock")
 	var sendtxs []tp.TX
 	var receivetxs []tp.TX
-	if(block.Data.Txs != nil ){
-		for i:=0;i<len(block.Data.Txs);i++{
+	if block.Data.Txs != nil {
+		for i := 0; i < len(block.Data.Txs); i++ {
 
 			data := block.Data.Txs[i]
-			encodeStr:=hex.EncodeToString(data)
-			temptx, _ := hex.DecodeString(encodeStr)//得到真实的tx记录
+			encodeStr := hex.EncodeToString(data)
+			temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
 			fmt.Println(string(temptx))
 			var t tp.TX
-			json.Unmarshal(temptx, &t) 
-			
-			if(t.Txtype=="tx"){
+			json.Unmarshal(temptx, &t)
+
+			if t.Txtype == "tx" {
 				continue
-			}else if(t.Txtype=="relaytx"){
-				if(t.Sender==block.Shard){
-					sendtxs=append(sendtxs,t)
+			} else if t.Txtype == "relaytx" {
+				if t.Sender == block.Shard {
+					sendtxs = append(sendtxs, t)
 					blockExec.Add2RelaytxDB(t)
-				}else if(t.Receiver==block.Shard){
-					receivetxs=append(receivetxs,t) 
+				} else if t.Receiver == block.Shard {
+					receivetxs = append(receivetxs, t)
 				}
-			}else if(t.Txtype=="addtx"){
+			} else if t.Txtype == "addtx" {
 				blockExec.RemoveFromRelaytxDB(t)
 				//continue
 
-			}else if(t.Txtype=="checkpoint"){
+			} else if t.Txtype == "checkpoint" {
 				continue
 				//重新发送内容
 				/*
-				if (len(t.Content)>0){
-					for i :=0;i<len(t.Content);i++{
-						var reAddTx TX
-						json.Unmarshal([]byte(t.Content[i]), &reAddTx)
-						go blockExec.Sendtxs(reAddTx,i%3)		
-					}
-				
-					
-				}*/
+					if (len(t.Content)>0){
+						for i :=0;i<len(t.Content);i++{
+							var reAddTx TX
+							json.Unmarshal([]byte(t.Content[i]), &reAddTx)
+							go blockExec.Sendtxs(reAddTx,i%3)
+						}
+
+
+					}*/
 			}
 		}
 	}
-	return sendtxs,receivetxs
+	return sendtxs, receivetxs
 }
 
-func (blockExec *BlockExecutor) Add2RelaytxDB(tx tp.TX){
+func (blockExec *BlockExecutor) Add2RelaytxDB(tx tp.TX) {
 	fmt.Println("Add2RelaytxDB")
 	blockExec.mempool.AddRelaytxDB(tx)
 }
-func  (blockExec *BlockExecutor) RemoveFromRelaytxDB(tx tp.TX){
+func (blockExec *BlockExecutor) RemoveFromRelaytxDB(tx tp.TX) {
 	fmt.Println("RemoveFromRelaytxDB")
 	blockExec.mempool.RemoveRelaytxDB(tx)
 }
-func (blockExec *BlockExecutor) UpdateRelaytxDB()([]tp.TX){
+func (blockExec *BlockExecutor) UpdateRelaytxDB() []tp.TX {
 	fmt.Println("UpdateRelaytxDB")
-	resendTxs:=blockExec.mempool.UpdaterDB()
+	resendTxs := blockExec.mempool.UpdaterDB()
 	return resendTxs
 }
-func (blockExec *BlockExecutor) GetAllTxs()([]tp.TX){
+func (blockExec *BlockExecutor) GetAllTxs() []tp.TX {
 	fmt.Println("GetAllTxs")
-	cpTxs:=blockExec.mempool.GetAllTxs()
+	cpTxs := blockExec.mempool.GetAllTxs()
 	return cpTxs
 }
 
-func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX){
+func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX) {
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
 	var shard_send [4][]tp.TX
 	//将需要跨片的交易按分片归类
-	for i:=0;i<len(txs);i++{
-		flag := int(txs[i].Receiver[0])-65
-		shard_send[flag]=append(shard_send[flag],txs[i])
+	for i := 0; i < len(txs); i++ {
+		flag := int(txs[i].Receiver[0]) - 65
+		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	client := &http.Client{}
-	for i :=0;i<len(shard_send);i++{
-		if(shard_send[i]!=nil){
-			num:=len(shard_send[i])
-			if(num>0){
-				for j:=0;j<num;j++{
-						go blockExec.Sendtxs(shard_send[i][j],j%3,client)
+	for i := 0; i < len(shard_send); i++ {
+		if shard_send[i] != nil {
+			num := len(shard_send[i])
+			if num > 0 {
+				for j := 0; j < num; j++ {
+					go blockExec.Sendtxs(shard_send[i][j], j%3, client)
 				}
 			}
 
@@ -307,24 +325,24 @@ func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX){
 	}
 }
 
-func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []tp.TX){
+func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
 	//向发送来的分片中返回确认消息
 	fmt.Println("SendAddedRelayTxs")
 	//暂时定义分片有4个
 	var shard_send [4][]tp.TX
 	//将需要跨片的交易按分片归类
-	for i:=0;i<len(txs);i++{
-		flag := int(txs[i].Receiver[0])-65
+	for i := 0; i < len(txs); i++ {
+		flag := int(txs[i].Receiver[0]) - 65
 		txs[i].Txtype = "addTx"
-		shard_send[flag]=append(shard_send[flag],txs[i])
+		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	client := &http.Client{}
-	for i :=0;i<len(shard_send);i++{
-		if(shard_send[i]!=nil){
-			num:=len(shard_send[i])
-			if(num>0){
-				for j:=0;j<num;j++{
-						go blockExec.Sendtxs(shard_send[i][j],j%3,client)
+	for i := 0; i < len(shard_send); i++ {
+		if shard_send[i] != nil {
+			num := len(shard_send[i])
+			if num > 0 {
+				for j := 0; j < num; j++ {
+					go blockExec.Sendtxs(shard_send[i][j], j%3, client)
 				}
 			}
 
@@ -332,27 +350,22 @@ func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []tp.TX){
 	}
 }
 
-
-
-
 //---------------------------------------------------------------------------
 //ETCD
 
-
-
-func (blockExec *BlockExecutor)Sendtxs(tx tp.TX,flag int,client *http.Client){
-	SiteIp:=""
-	e:=useetcd.Use_Etcd{
- 		 Endpoints:[]string{"192.168.5.56:2379"},
+func (blockExec *BlockExecutor) Sendtxs(tx tp.TX, flag int, client *http.Client) {
+	SiteIp := ""
+	e := useetcd.Use_Etcd{
+		Endpoints: []string{"192.168.5.56:2379"},
 	}
-	fmt.Println("tx.Sender",tx.Sender,"tx.Receiver",tx.Receiver,"Txtype",tx.Txtype)
-	if tx.Txtype=="addTx"{
+	fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
+	if tx.Txtype == "addTx" {
 		SiteIp = string(e.Query(tx.Sender))
-	} else{
+	} else {
 		SiteIp = string(e.Query(tx.Receiver))
 	}
 	fmt.Println(SiteIp)
-	blockExec.Send2TEN(tx,SiteIp,flag,client)
+	blockExec.Send2TEN(tx, SiteIp, flag, client)
 }
 
 //替代etcd，加了etcd时长变长，容易出现超时错误
@@ -383,61 +396,62 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 	}
 	res, _ := json.Marshal(tx)
 	fmt.Println(string(res))
-	
+
 	blockExec.Send2TEN(tx,SiteIp,flag,client)
 
 }
 */
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      string       `json:"id"`
+	ID      string          `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
-func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
+
+func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *http.Client) {
 
 	res, _ := json.Marshal(tx)
 	requestBody := new(bytes.Buffer)
-	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 	if err != nil {
 		fmt.Printf("failed to encode params: %v\n", err)
 		os.Exit(1)
 	}
 	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc:=&RPCRequest{
+	rc := &RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "tm-bench",
 		Method:  "broadcast_tx_commit",
 		Params:  rawParamsJSON,
 	}
 	json.NewEncoder(requestBody).Encode(rc)
-	url := "http://"+ip
+	url := "http://" + ip
 	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	if err != nil {
 		panic(err)
 	}
 	response, _ := client.Do(req)
 	body, _ := ioutil.ReadAll(response.Body)
 	var f interface{}
-	jserror:= json.Unmarshal(body, &f)
-		if jserror != nil {
-			fmt.Println(jserror)
-		}
-	m := f.(map[string]interface{}) 
+	jserror := json.Unmarshal(body, &f)
+	if jserror != nil {
+		fmt.Println(jserror)
+	}
+	m := f.(map[string]interface{})
 	for k, v := range m {
-		if (k=="error"){
+		if k == "error" {
 			md, _ := v.(map[string]interface{})
-			if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
+			if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
 				blockExec.RemoveFromRelaytxDB(tx)
 			}
 		}
 	}
-	
 
 }
+
 //----------------------------------------------------------------------------
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
@@ -558,7 +572,6 @@ func execBlockOnProxyApp(
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
-
 	return abciResponses, nil
 }
 
@@ -646,15 +659,15 @@ func updateState(
 	nValSet := state.NextValidators.Copy()
 
 	// Update the validator set with the latest abciResponses.
-	
+
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		//为了固定leader，可以不更新validator set
-	    /*
-		err := nValSet.UpdateWithChangeSet(validatorUpdates)
-		if err != nil {
-			return state, fmt.Errorf("Error changing validator set: %v", err)
-		}
+		/*
+			err := nValSet.UpdateWithChangeSet(validatorUpdates)
+			if err != nil {
+				return state, fmt.Errorf("Error changing validator set: %v", err)
+			}
 		*/
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1

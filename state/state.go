@@ -160,6 +160,37 @@ func (state State) MakeBlock(
 
 	return block, block.MakePartSet(types.BlockPartSizeBytes)
 }
+func (state State) MakeChangeBlock(
+	height int64,
+	txs []types.Tx,
+	commit *types.Commit,
+	evidence []types.Evidence,
+	proposerAddress []byte,
+) (*types.Block, *types.PartSet) {
+
+	// Build base block with block data.
+	block := types.MakeBlock(height, txs, commit, evidence)
+	block.IsChange = true
+
+	// Set time.
+	var timestamp time.Time
+	if height == 1 {
+		timestamp = state.LastBlockTime // genesis time
+	} else {
+		timestamp = MedianTime(commit, state.LastValidators)
+	}
+
+	// Fill rest of header with state data.
+	block.Header.Populate(
+		state.Version.Consensus, state.ChainID,
+		timestamp, state.LastBlockID, state.LastBlockTotalTx+block.NumTxs,
+		state.Validators.Hash(), state.NextValidators.Hash(),
+		state.ConsensusParams.Hash(), state.AppHash, state.LastResultsHash,
+		proposerAddress,
+	)
+
+	return block, block.MakePartSet(types.BlockPartSizeBytes)
+}
 
 // MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
 // corresponding validator set. The computed time is always between timestamps of
@@ -228,7 +259,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		validatorSet = types.NewValidatorSet(validators)
 		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
-	
+
 	return State{
 		Version: initStateVersion,
 		ChainID: genDoc.ChainID,

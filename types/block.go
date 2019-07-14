@@ -40,6 +40,7 @@ const (
 type Block struct {
 	mtx        sync.Mutex
 	Shard	   string
+	IsChange   bool
 	Header     `json:"header"`
 	Data       `json:"data"`
 	Evidence   EvidenceData `json:"evidence"`
@@ -53,6 +54,7 @@ type Block struct {
 func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Shard: getShard(), 
+		IsChange:false,
 		Header: Header{
 			Height: height,
 			NumTxs: int64(len(txs)),

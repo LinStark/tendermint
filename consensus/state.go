@@ -648,6 +648,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	}()
 
 	for {
+		fmt.Println("-------will  do this ----- wait massage -----")
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
 				cs.Logger.Info("reached max steps. exiting receive routine")
@@ -705,6 +706,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
+		fmt.Println("===================ruc:setProposal",msg.Proposal)
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
@@ -739,6 +741,14 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
+	/*case *ChangeMessage:
+		added, err = cs.tryChangeLeader(msg.ChangeMessage, peerID)
+		if added {
+			cs.statsMsgQueue <- mi
+		}
+		if err == ErrAddingVote {
+		}
+*/
 	default:
 		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
 		return
@@ -751,8 +761,36 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// 	"peer", peerID, "err", err, "msg", msg)
 	}
 }
+/*
+func (cs *ConsensusState) tryChangeLeader(vote *types.ChangeMessage, peerID p2p.ID) (bool, error) {
+	added, err := cs.changeLeader(vote, peerID)
+	if err != nil {
+		// If the vote height is off, we'll just ignore it,
+		// But if it's a conflicting sig, add it to the cs.evpool.
+		// If it's otherwise invalid, punish peer.
+		if err == ErrVoteHeightMismatch {
+			return added, err
+		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
+			addr := cs.privValidator.GetPubKey().Address()
+			if bytes.Equal(vote.ValidatorAddress, addr) {
+				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
+				return added, err
+			}
+			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
+			return added, err
+		} else {
+			// Probably an invalid signature / Bad peer.
+			// Seems this can also err sometimes with "Unexpected step" - perhaps not from a bad peer ?
+			cs.Logger.Error("Error attempting to add changevote", "err", err)
+			return added, ErrAddingVote
+		}
+	}
+	return added, nil
+}
+*/
 
 func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
+	fmt.Println("================handleTimeout===================")
 	cs.Logger.Debug("Received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 
 	// timeouts must be for current height, round, step
@@ -917,7 +955,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if height == 1{
 		//如果高度为1并且是leader，则需要向etcd中更新地址
-		cs.sendLeaderToEtcd(address)	
+		//cs.sendLeaderToEtcd(address)	
 	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
@@ -952,7 +990,7 @@ func getShard()(string){
 func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
-
+	fmt.Println("!!!!defaultDecideProposal-----------")
 	// Decide on block
 	if cs.ValidBlock != nil {
 		// If there is valid block, choose that.
@@ -1028,6 +1066,26 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
+//更换leader的时候调用的特殊proposal
+func (cs *ConsensusState) CreateChangeProposalBlock() (block *types.Block, blockParts *types.PartSet) {
+	var commit *types.Commit
+	if cs.Height == 1 {
+		// We're creating a proposal for the first block.
+		// The commit is empty, but not nil.
+		commit = types.NewCommit(types.BlockID{}, nil)
+	} else if cs.LastCommit.HasTwoThirdsMajority() {
+		// Make the commit from LastCommit
+		commit = cs.LastCommit.MakeCommit()
+	} else {
+		// This shouldn't happen.
+		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
+		return
+	}
+
+	proposerAddr := cs.privValidator.GetPubKey().Address() //得到自己的address（即备用leader的address）
+	return cs.blockExec.CreateChangeProposalBlock(cs.Height, cs.state, commit, proposerAddr)
+}
+
 // Enter: `timeoutPropose` after entering Propose.
 // Enter: proposal block and POL is ready.
 // Prevote for LockedBlock if we're locked, or ProposalBlock if valid.
@@ -1037,6 +1095,7 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 		cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
+	fmt.Println("=====================enterPrevote================")
 
 	defer func() {
 		// Done enterPrevote:
@@ -1054,6 +1113,7 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 }
 
 func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
+	fmt.Println("=====================defaultDoPrevote================")
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// If a block is locked, prevote that.
@@ -1377,7 +1437,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 	flag :=cs.isLeader()
-
+	if(height==20){
+		//cs.changevalidators()
+	}
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
@@ -1689,6 +1751,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
+	
 	if cs.Proposal != nil {
 		return nil
 	}
@@ -1723,6 +1786,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
 func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
+	fmt.Println("=======================add proposal block=====================")
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1875,12 +1939,11 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 		// If +2/3 prevotes for a block or nil for *any* round:
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
-
 			// There was a polka!
 			// If we're locked but this is a recent polka, unlock.
 			// If it matches our ProposalBlock, update the ValidBlock
 
-			// Unlock if `cs.LockedRound < vote.Round <= cs.Round`
+			// Unlock if `cs.LockedRound < vote.eventBusRound <= cs.Round`
 			// NOTE: If vote.Round > cs.Round, we'll deal with it when we get to vote.Round
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
@@ -1897,7 +1960,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			// Update Valid* if we can.
 			// NOTE: our proposal block may be nil or not what received a polka..
 			if len(blockID.Hash) != 0 && (cs.ValidRound < vote.Round) && (vote.Round == cs.Round) {
-
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.Logger.Info(
 						"Updating ValidBlock because of POL.", "validRound", cs.ValidRound, "POLRound", vote.Round)
@@ -1933,6 +1995,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
 			// If the proposal is now complete, enter prevote of cs.Round.
 			if cs.isProposalComplete() {
+ 				fmt.Println(time.Now(),"=============ruc:precommittype22222222222222222222222===============")
 				cs.enterPrevote(height, cs.Round)
 			}
 		}
