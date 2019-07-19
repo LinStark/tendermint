@@ -149,6 +149,7 @@ func (state State) MakeBlock(
 		timestamp = MedianTime(commit, state.LastValidators)
 	}
 
+	fmt.Println("this is from make MakeBlock,",state.Validators)
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
@@ -179,7 +180,7 @@ func (state State) MakeChangeBlock(
 	} else {
 		timestamp = MedianTime(commit, state.LastValidators)
 	}
-
+	fmt.Println("this is from make MakeChangeBlock,",state.Validators)
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,

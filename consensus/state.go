@@ -3,21 +3,24 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
-	"net/http"
-//	"io"
-	"strconv"
-	"encoding/json"
+
+	//	"io"
 	"encoding/hex"
-//	"strings"
-	"syscall"
+	"encoding/json"
+	"strconv"
+
+	//	"strings"
 	"crypto/sha256"
-	"io/ioutil"
 	"io"
+	"io/ioutil"
 	"os"
+	"syscall"
+
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -32,8 +35,8 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-
 )
+
 //-----------------------------------------------------------------------------
 // Errors
 
@@ -79,17 +82,17 @@ type evidencePool interface {
 }
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      string       `json:"id"`
+	ID      string          `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
-type STX struct{
-	Txtype string
-	Sender string
+type STX struct {
+	Txtype   string
+	Sender   string
 	Receiver string
 	ID       [sha256.Size]byte
-	Content []string
-} 
+	Content  []string
+}
 
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
@@ -125,6 +128,7 @@ type ConsensusState struct {
 	peerMsgQueue     chan msgInfo
 	internalMsgQueue chan msgInfo
 	timeoutTicker    TimeoutTicker
+	changeMessage    chan msgInfo
 
 	// information about about added votes and block parts are written on this channel
 	// so statistics can be computed by reactor
@@ -178,6 +182,7 @@ func NewConsensusState(
 		blockStore:       blockStore,
 		txNotifier:       txNotifier,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
+		changeMessage:    make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
 		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
@@ -360,11 +365,10 @@ go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without cor
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
 	cs.scheduleRound0(cs.GetRoundState())
-	
-	return nil
-	
-}
 
+	return nil
+
+}
 
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
@@ -648,7 +652,6 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	}()
 
 	for {
-		fmt.Println("-------will  do this ----- wait massage -----")
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {
 				cs.Logger.Info("reached max steps. exiting receive routine")
@@ -681,15 +684,61 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
+
 			cs.wal.Write(ti)
+			fmt.Println(ti)
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
+		case mi := <-cs.changeMessage:
+			//cs.wal.Write(mi)
+			fmt.Println(mi)
+			cs.updateChangeState(cs.Height)
+
+			fmt.Println("through the changemessage")
+			cs.enterChangeNewRound(cs.Height, 0)
+
 		case <-cs.Quit():
 			onExit(cs)
 			return
 		}
 	}
+}
+
+func (cs *ConsensusState) updateChangeState(height int64) {
+
+	seenCommit := cs.blockStore.LoadSeenCommit(cs.state.LastBlockHeight)
+	lastPrecommits := types.NewVoteSet(cs.state.ChainID, cs.state.LastBlockHeight, seenCommit.Round(), types.PrecommitType, cs.state.LastValidators)
+
+
+	cs.updateRoundStep(0, cstypes.RoundStepNewHeight)
+	cs.StartTime = cs.config.Commit(tmtime.Now())
+	validators := cs.Validators.UpdateValidators() //TODO把旧的leader去掉？把权重第二的换成leader
+
+	cs.LastValidators = cs.Validators
+	cs.Validators = validators
+	cs.Proposal = nil
+	cs.ProposalBlock = nil
+	cs.ProposalBlockParts = nil
+	cs.LockedRound = -1
+	cs.LockedBlock = nil
+	cs.LockedBlockParts = nil
+	cs.ValidRound = -1
+	cs.ValidBlock = nil
+	cs.ValidBlockParts = nil
+	cs.Votes = cstypes.NewHeightVoteSet(cs.state.ChainID, height, validators)
+	cs.CommitRound = -1
+	cs.LastCommit = lastPrecommits
+	cs.TriggeredTimeoutPrecommit = false
+
+	cs.state.Validators = validators
+	cs.state.NextValidators = validators
+	cs.privValidator.SubHeight(cs.Height-1)
+
+}
+func getLeader() string {
+	v, _ := syscall.Getenv("Leader")
+	return v
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
@@ -706,7 +755,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		fmt.Println("===================ruc:setProposal",msg.Proposal)
+		fmt.Println("===================ruc:setProposal===========")
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
@@ -741,14 +790,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
-	/*case *ChangeMessage:
-		added, err = cs.tryChangeLeader(msg.ChangeMessage, peerID)
-		if added {
-			cs.statsMsgQueue <- mi
-		}
-		if err == ErrAddingVote {
-		}
-*/
+
 	default:
 		cs.Logger.Error("Unknown msg type", "type", reflect.TypeOf(msg))
 		return
@@ -761,36 +803,8 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// 	"peer", peerID, "err", err, "msg", msg)
 	}
 }
-/*
-func (cs *ConsensusState) tryChangeLeader(vote *types.ChangeMessage, peerID p2p.ID) (bool, error) {
-	added, err := cs.changeLeader(vote, peerID)
-	if err != nil {
-		// If the vote height is off, we'll just ignore it,
-		// But if it's a conflicting sig, add it to the cs.evpool.
-		// If it's otherwise invalid, punish peer.
-		if err == ErrVoteHeightMismatch {
-			return added, err
-		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			addr := cs.privValidator.GetPubKey().Address()
-			if bytes.Equal(vote.ValidatorAddress, addr) {
-				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
-				return added, err
-			}
-			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
-			return added, err
-		} else {
-			// Probably an invalid signature / Bad peer.
-			// Seems this can also err sometimes with "Unexpected step" - perhaps not from a bad peer ?
-			cs.Logger.Error("Error attempting to add changevote", "err", err)
-			return added, ErrAddingVote
-		}
-	}
-	return added, nil
-}
-*/
 
 func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
-	fmt.Println("================handleTimeout===================")
 	cs.Logger.Debug("Received tock", "timeout", ti.Duration, "height", ti.Height, "round", ti.Round, "step", ti.Step)
 
 	// timeouts must be for current height, round, step
@@ -798,6 +812,7 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 		cs.Logger.Debug("Ignoring tock because we're ahead", "height", rs.Height, "round", rs.Round, "step", rs.Step)
 		return
 	}
+	fmt.Println("===============handletimeout======================")
 
 	// the timeout will now cause a state transition
 	cs.mtx.Lock()
@@ -845,6 +860,7 @@ func (cs *ConsensusState) handleTxsAvailable() {
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
 // NOTE: cs.StartTime was already set for height.
 func (cs *ConsensusState) enterNewRound(height int64, round int) {
+	fmt.Println("=========enterNewRound========")
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
@@ -892,10 +908,12 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
 	if waitForTxs {
 		if cs.config.CreateEmptyBlocksInterval > 0 {
+
 			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
 				cstypes.RoundStepNewRound)
 		}
 	} else {
+
 		cs.enterPropose(height, round)
 	}
 }
@@ -915,6 +933,8 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ): after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *ConsensusState) enterPropose(height int64, round int) {
+	fmt.Println("========enterPropose==========")
+
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
@@ -922,7 +942,6 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 		return
 	}
 	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
-
 	defer func() {
 		// Done enterPropose:
 		cs.updateRoundStep(round, cstypes.RoundStepPropose)
@@ -935,16 +954,13 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 			cs.enterPrevote(height, cs.Round)
 		}
 	}()
-
 	// If we don't get the proposal and all block parts quick enough, enterPrevote
 	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
-
 	// Nothing more to do if we're not a validator
 	if cs.privValidator == nil {
 		logger.Debug("This node is not a validator")
 		return
 	}
-
 	// if not a validator, we're done
 	address := cs.privValidator.GetPubKey().Address()
 	if !cs.Validators.HasAddress(address) {
@@ -953,9 +969,9 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 	logger.Debug("This node is a validator")
 
-	if height == 1{
+	if height == 1 {
 		//如果高度为1并且是leader，则需要向etcd中更新地址
-		//cs.sendLeaderToEtcd(address)	
+		//cs.sendLeaderToEtcd(address)
 	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
@@ -965,24 +981,122 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	}
 }
 
+func (cs *ConsensusState) enterChangeNewRound(height int64, round int) {
+
+	logger := cs.Logger.With("height", height, "round", round)
+
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
+		logger.Debug(fmt.Sprintf("enterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		return
+	}
+
+	if now := tmtime.Now(); cs.StartTime.After(now) {
+		logger.Info("Need to set a buffer and log message here for sanity.", "startTime", cs.StartTime, "now", now)
+	}
+
+	logger.Info(fmt.Sprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+
+	// Increment validators if necessary
+	validators := cs.Validators
+	if cs.Round < round {
+		validators = validators.Copy()
+		validators.IncrementProposerPriority(round - cs.Round)
+	}
+
+	// Setup new round
+	// we don't fire newStep for this step,
+	// but we fire an event, so update the round step first
+	cs.updateRoundStep(round, cstypes.RoundStepNewRound)
+	cs.Validators = validators
+	if round == 0 {
+		// We've already reset these upon new height,
+		// and meanwhile we might have received a proposal
+		// for round 0.
+	} else {
+		logger.Info("Resetting Proposal info")
+		cs.Proposal = nil
+		cs.ProposalBlock = nil
+		cs.ProposalBlockParts = nil
+	}
+
+	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
+	cs.TriggeredTimeoutPrecommit = false
+
+	cs.eventBus.PublishEventNewRound(cs.NewRoundEvent())
+	cs.metrics.Rounds.Set(float64(round))
+
+	// Wait for txs to be available in the mempool
+	// before we enterPropose in round 0. If the last block changed the app hash,
+	// we may need an empty "proof" block, and enterPropose immediately.
+	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
+	if waitForTxs {
+		if cs.config.CreateEmptyBlocksInterval > 0 {
+			cs.scheduleTimeout(cs.config.CreateEmptyBlocksInterval, height, round,
+				cstypes.RoundStepNewRound)
+		}
+	} else {
+		cs.enterChangePropose(height, round)
+	}
+}
+func (cs *ConsensusState) enterChangePropose(height int64, round int) {
+	fmt.Println("=========enterChangePropose=======")
+	logger := cs.Logger.With("height", height, "round", round)
+	fmt.Println("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step)
+	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
+		logger.Debug(fmt.Sprintf("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+		return
+	}
+	logger.Info(fmt.Sprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	defer func() {
+		// Done enterPropose:
+		cs.updateRoundStep(round, cstypes.RoundStepPropose)
+		cs.newStep()
+
+		// If we have the whole proposal + POL, then goto Prevote now.
+		// else, we'll enterPrevote when the rest of the proposal is received (in AddProposalBlockPart),
+		// or else after timeoutPropose
+		if cs.isProposalComplete() {
+			cs.enterPrevote(height, cs.Round)
+		}
+	}()
+	// If we don't get the proposal and all block parts quick enough, enterPrevote
+	cs.scheduleTimeout(cs.config.Propose(round), height, round, cstypes.RoundStepPropose)
+	// Nothing more to do if we're not a validator
+	if cs.privValidator == nil {
+		logger.Debug("This node is not a validator")
+		return
+	}
+	// if not a validator, we're done
+	address := cs.privValidator.GetPubKey().Address()
+	if !cs.Validators.HasAddress(address) {
+		logger.Debug("This node is not a validator", "addr", address, "vals", cs.Validators)
+		return
+	}
+	logger.Debug("This node is a validator")
+	str := getLeader()
+	if str == "yes" {
+		cs.defaultChangeProposal(height, round)
+	}
+}
+
 func (cs *ConsensusState) isProposer(address []byte) bool {
 	return bytes.Equal(cs.Validators.GetProposer().Address, address)
 }
 
-func (cs *ConsensusState)sendLeaderToEtcd(address []byte){
+func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
-	if cs.isProposer(address){
-		e:=useetcd.Use_Etcd{
-	 		 Endpoints:[]string{"192.168.5.56:2379"},
+	if cs.isProposer(address) {
+		e := useetcd.Use_Etcd{
+			Endpoints: []string{"192.168.5.56:2379"},
 		}
-		e.Update(getShard(),getPort())
+		e.Update(getShard(), getPort())
 	}
 }
-func getPort()(string){
+func getPort() string {
 	v, _ := syscall.Getenv("PORT")
 	return v
 }
-func getShard()(string){
+func getShard() string {
 	v, _ := syscall.Getenv("TASKID")
 	return v
 }
@@ -990,6 +1104,7 @@ func getShard()(string){
 func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	var block *types.Block
 	var blockParts *types.PartSet
+
 	fmt.Println("!!!!defaultDecideProposal-----------")
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -1009,10 +1124,12 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	// Make proposal
 	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
 	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	//cs.privValidator.LastSignState.Step=1
 	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+
 		for i := 0; i < blockParts.Total(); i++ {
 			part := blockParts.GetPart(i)
 			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
@@ -1066,21 +1183,59 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
 }
 
+//创建新的change proposal
+func (cs *ConsensusState) defaultChangeProposal(height int64, round int) {
+	var block *types.Block
+	var blockParts *types.PartSet
+
+	//创建一个特殊的block
+	block, blockParts = cs.CreateChangeProposalBlock()
+	if block == nil { // on error
+		return
+	}
+
+	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign, and the privValidator will refuse to sign anything.
+	cs.wal.FlushAndSync()
+
+	// Make proposal
+	propBlockId := types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}
+
+	proposal := types.NewProposal(height, round, cs.ValidRound, propBlockId)
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
+
+		// send proposal and block parts on internal msg queue
+		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
+		for i := 0; i < blockParts.Total(); i++ {
+			part := blockParts.GetPart(i)
+			cs.sendInternalMessage(msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, ""})
+		}
+		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+		cs.Logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
+	} else {
+		if !cs.replayMode {
+			cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+		}
+	}
+}
+
 //更换leader的时候调用的特殊proposal
 func (cs *ConsensusState) CreateChangeProposalBlock() (block *types.Block, blockParts *types.PartSet) {
 	var commit *types.Commit
-	if cs.Height == 1 {
-		// We're creating a proposal for the first block.
-		// The commit is empty, but not nil.
-		commit = types.NewCommit(types.BlockID{}, nil)
-	} else if cs.LastCommit.HasTwoThirdsMajority() {
-		// Make the commit from LastCommit
-		commit = cs.LastCommit.MakeCommit()
-	} else {
-		// This shouldn't happen.
-		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
-		return
-	}
+	/*
+		if cs.Height == 1 {
+			// We're creating a proposal for the first block.
+			// The commit is empty, but not nil.
+			commit = types.NewCommit(types.BlockID{}, nil)
+		} else if cs.LastCommit.HasTwoThirdsMajority() {
+			// Make the commit from LastCommit
+			commit = cs.LastCommit.MakeCommit()
+		} else {
+			// This shouldn't happen.
+			cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block.")
+			return
+		}*/
+	//这里强制提交上一个区块，可能有安全问题？
+	commit = types.NewCommit(types.BlockID{}, nil)
 
 	proposerAddr := cs.privValidator.GetPubKey().Address() //得到自己的address（即备用leader的address）
 	return cs.blockExec.CreateChangeProposalBlock(cs.Height, cs.state, commit, proposerAddr)
@@ -1095,7 +1250,6 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 		cs.Logger.Debug(fmt.Sprintf("enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
-	fmt.Println("=====================enterPrevote================")
 
 	defer func() {
 		// Done enterPrevote:
@@ -1113,7 +1267,6 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 }
 
 func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
-	fmt.Println("=====================defaultDoPrevote================")
 	logger := cs.Logger.With("height", height, "round", round)
 
 	// If a block is locked, prevote that.
@@ -1436,14 +1589,14 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
-	flag :=cs.isLeader()
-	if(height==20){
+	flag := cs.isLeader()
+	if height == 20 {
 		//cs.changevalidators()
 	}
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
-	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block,flag)
+	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{Hash: block.Hash(), PartsHeader: blockParts.Header()}, block, flag)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1471,27 +1624,25 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
-	
 
 	//从数据库中的检查点中恢复数据
 	//cs.reactorViaCheckpoint(height)
 
-
 }
-func(cs *ConsensusState) isLeader()(flag bool){
+func (cs *ConsensusState) isLeader() (flag bool) {
 	address := cs.privValidator.GetPubKey().Address()
 	flag = cs.isProposer(address)
 	return flag
 }
 
-func  (cs *ConsensusState)reactorViaCheckpoint(height int64){
-	if(height%20==0){
+func (cs *ConsensusState) reactorViaCheckpoint(height int64) {
+	if height%20 == 0 {
 		//一次checkpoint,更新
-		cpTxs:=cs.CheckBlockTxInfo(height)
+		cpTxs := cs.CheckBlockTxInfo(height)
 		cpTxs = Sendtxs(cpTxs) //TODO需要在分布式环境下测试
-		cptx:=conver2cptx(cpTxs,height)
-		Sendcptx(cptx,0) //TODO 改为一定要加入成功
-		
+		cptx := conver2cptx(cpTxs, height)
+		Sendcptx(cptx, 0) //TODO 改为一定要加入成功
+
 	}
 }
 
@@ -1499,90 +1650,89 @@ func  (cs *ConsensusState)reactorViaCheckpoint(height int64){
 func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
 	//input:最后一个区块高度
 	var tblock *types.Block
-	//从后往前遍历区块，直到找到checkpoint记录 
-	var waitComTxs []STX  //待确认的tx数组
-	var delTxs []STX //待删除的tx
+	//从后往前遍历区块，直到找到checkpoint记录
+	var waitComTxs []STX //待确认的tx数组
+	var delTxs []STX     //待删除的tx
 	flag := true
 	var lastCheckHeight int64 //上一次checkpoint的高度
-	lastCheckHeight=0
-	for i:=maxHeight ;i>lastCheckHeight;i--{
+	lastCheckHeight = 0
+	for i := maxHeight; i > lastCheckHeight; i-- {
 		tblock = cs.blockStore.LoadBlock(i) //TODO
-		
+
 		//从最后一个区块开始遍历block数组
-		if(tblock.Data.Txs != nil ){
-			for i:=0;i<len(tblock.Data.Txs);i++{
-		
+		if tblock.Data.Txs != nil {
+			for i := 0; i < len(tblock.Data.Txs); i++ {
+
 				data := tblock.Data.Txs[i]
 				//遍历每个tblock中的TX
-				encodeStr:=hex.EncodeToString(data)
-				temptx, _ := hex.DecodeString(encodeStr)//得到真实的tx记录
-				
+				encodeStr := hex.EncodeToString(data)
+				temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
+
 				var t STX
 				json.Unmarshal(temptx, &t)
-				if (t.Txtype=="relaytx"){
+				if t.Txtype == "relaytx" {
 					//tblock.Shard="A" //TODO!!!!!!!!!!!!
-					if(t.Sender==tblock.Shard){
-					//如果是relaytx，并且是当前分片发起的，则加入到带确认数组
+					if t.Sender == tblock.Shard {
+						//如果是relaytx，并且是当前分片发起的，则加入到带确认数组
 						waitComTxs = append(waitComTxs, t)
-						
+
 					}
-				}else if(t.Txtype=="addtx"){
+				} else if t.Txtype == "addtx" {
 					//如果是addtx
-					delTxs = append(delTxs,t) //删除数组中对应的tx，用ID查找
-				}else if(t.Txtype=="checkpoint"){
-					if(flag){
-						lastCheckHeight,_=strconv.ParseInt(t.Sender,10,64) //得到上一次检查点高度,保证只更新一次
+					delTxs = append(delTxs, t) //删除数组中对应的tx，用ID查找
+				} else if t.Txtype == "checkpoint" {
+					if flag {
+						lastCheckHeight, _ = strconv.ParseInt(t.Sender, 10, 64) //得到上一次检查点高度,保证只更新一次
 						flag = false
 					}
-					for j:=0;j<len(t.Content);j++{
+					for j := 0; j < len(t.Content); j++ {
 						var cpt STX
 						json.Unmarshal([]byte(t.Content[j]), &cpt)
-						waitComTxs = append(waitComTxs,cpt) //TODO 
-					}	
-					fmt.Println("length of waitComTxs is ",len(waitComTxs),"lastCheckHeight",lastCheckHeight)
+						waitComTxs = append(waitComTxs, cpt) //TODO
+					}
+					fmt.Println("length of waitComTxs is ", len(waitComTxs), "lastCheckHeight", lastCheckHeight)
 				}
 			}
 		}
-		
+
 	}
 	var cpTxs []STX
-	cpTxs = removeAddedTxs(waitComTxs,delTxs)
+	cpTxs = removeAddedTxs(waitComTxs, delTxs)
 	return cpTxs
 	//返回所有未确认的tx，后续需要重新发送这些交易
 
 }
 
+func conver2cptx(cpTxs []STX, height int64) STX {
 
-func  conver2cptx(cpTxs []STX,height int64) STX{
-	
 	var content []string
-	fmt.Println("cpTxs length is ",len(cpTxs))
-	for i:=0;i<len(cpTxs);i++{
-		marshalTx ,_:=json.Marshal(cpTxs[i])
-		content=append(content,string(marshalTx))
+	fmt.Println("cpTxs length is ", len(cpTxs))
+	for i := 0; i < len(cpTxs); i++ {
+		marshalTx, _ := json.Marshal(cpTxs[i])
+		content = append(content, string(marshalTx))
 	}
-	cptx :=&STX{
-		Txtype:"checkpoint",
-		Sender: strconv.FormatInt(height,10), //用sender记录高度
+	cptx := &STX{
+		Txtype:   "checkpoint",
+		Sender:   strconv.FormatInt(height, 10), //用sender记录高度
 		Receiver: "",
-		ID      : sha256.Sum256([]byte("checkpoint")),
-		Content :content} 
-    return *cptx
+		ID:       sha256.Sum256([]byte("checkpoint")),
+		Content:  content}
+	return *cptx
 }
 
-func Get(key string)(value string){
+func Get(key string) (value string) {
 
 	A := "192.168.5.56"
 	B := "192.168.5.57"
 	C := "192.168.5.58"
 	D := "192.168.5.60"
-	if key == "A"{
+	if key == "A" {
 		value = A
-	}else if key=="B"{
+	} else if key == "B" {
 		value = B
-	}else if key=="C"{
+	} else if key == "C" {
 		value = C
-	}else {
+	} else {
 		value = D
 	}
 	return value
@@ -1590,27 +1740,27 @@ func Get(key string)(value string){
 func Sendtxs(cptxs []STX) []STX {
 
 	client := &http.Client{}
-	port:=[3]string{"26657","36657","46657"}
-	SiteIp:=""
-	var dID  [][32]byte
-	for  i:=0;i<len(cptxs);i++{
+	port := [3]string{"26657", "36657", "46657"}
+	SiteIp := ""
+	var dID [][32]byte
+	for i := 0; i < len(cptxs); i++ {
 		SiteIp = Get(cptxs[i].Receiver)
 		res, _ := json.Marshal(cptxs[i])
 		requestBody := new(bytes.Buffer)
-		paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+		paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 		if err != nil {
 			fmt.Printf("failed to encode params: %v\n", err)
 			os.Exit(1)
 		}
 		rawParamsJSON := json.RawMessage(paramsJSON)
-		rc:=&RPCRequest{
+		rc := &RPCRequest{
 			JSONRPC: "2.0",
 			ID:      "tm-bench",
 			Method:  "broadcast_tx_commit",
 			Params:  rawParamsJSON,
 		}
 		json.NewEncoder(requestBody).Encode(rc)
-		url := "http://"+SiteIp+":"+port[i%len(port)]
+		url := "http://" + SiteIp + ":" + port[i%len(port)]
 		req, err := http.NewRequest("POST", url, requestBody)
 		if err != nil {
 			panic(err)
@@ -1618,24 +1768,24 @@ func Sendtxs(cptxs []STX) []STX {
 		response, _ := client.Do(req)
 		body, _ := ioutil.ReadAll(response.Body)
 		var f interface{}
-		jserror:= json.Unmarshal(body, &f)
-			if jserror != nil {
-				fmt.Println(jserror)
-			}
-		m := f.(map[string]interface{}) 
+		jserror := json.Unmarshal(body, &f)
+		if jserror != nil {
+			fmt.Println(jserror)
+		}
+		m := f.(map[string]interface{})
 		for k, v := range m {
-			if (k=="error"){
+			if k == "error" {
 				md, _ := v.(map[string]interface{})
-				if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
-					dID=append(dID,cptxs[i].ID)
+				if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
+					dID = append(dID, cptxs[i].ID)
 				}
 			}
 		}
 	}
-	for i :=0;i<len(dID);i++{
+	for i := 0; i < len(dID); i++ {
 		for j := 0; j < len(cptxs); j++ {
 			if cptxs[j].ID == dID[i] {
-				cptxs = append( cptxs[:j], cptxs[j+1:]...)
+				cptxs = append(cptxs[:j], cptxs[j+1:]...)
 				break
 			}
 		}
@@ -1645,44 +1795,44 @@ func Sendtxs(cptxs []STX) []STX {
 
 }
 
-func  removeAddedTxs(waitComTxs []STX, delTxs []STX) []STX{
+func removeAddedTxs(waitComTxs []STX, delTxs []STX) []STX {
 	var cpTxs []STX
 	flag := true
-	for i :=0;i<len(waitComTxs);i++{
+	for i := 0; i < len(waitComTxs); i++ {
 		for j := 0; j < len(delTxs); j++ {
-			if(waitComTxs[i].ID==delTxs[j].ID){
-				flag =false
+			if waitComTxs[i].ID == delTxs[j].ID {
+				flag = false
 				break
 			}
 		}
-		if(flag){
-			cpTxs=append(cpTxs,waitComTxs[i])
+		if flag {
+			cpTxs = append(cpTxs, waitComTxs[i])
 		}
 	}
 	return cpTxs
 }
 
-func  Sendcptx(tx STX,flag int){
+func Sendcptx(tx STX, flag int) {
 
 	res, _ := json.Marshal(tx)
 	fmt.Println("-----------------sendcheckpointtx-----------------------")
 	client := &http.Client{}
 	requestBody := new(bytes.Buffer)
-	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 	if err != nil {
 		fmt.Printf("failed to encode params: %v\n", err)
 		os.Exit(1)
 	}
 	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc:=&RPCRequest{
+	rc := &RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "tm-bench",
 		Method:  "broadcast_tx_commit",
 		Params:  rawParamsJSON,
 	}
 	json.NewEncoder(requestBody).Encode(rc)
-	port:=[3]string{"26657","36657","46657"}
-	url := "http://localhost:"+port[0]
+	port := [3]string{"26657", "36657", "46657"}
+	url := "http://localhost:" + port[0]
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -1704,7 +1854,6 @@ func  Sendcptx(tx STX,flag int){
 }
 
 //-------------------------------------------------------------------------
-
 
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
@@ -1751,7 +1900,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
-	
+
 	if cs.Proposal != nil {
 		return nil
 	}
@@ -1768,8 +1917,11 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
+
 	if !cs.Validators.GetProposer().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
+
 		return ErrInvalidProposalSignature
+
 	}
 
 	cs.Proposal = proposal
@@ -1786,7 +1938,6 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
 func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
-	fmt.Println("=======================add proposal block=====================")
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1995,7 +2146,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
 			// If the proposal is now complete, enter prevote of cs.Round.
 			if cs.isProposalComplete() {
- 				fmt.Println(time.Now(),"=============ruc:precommittype22222222222222222222222===============")
 				cs.enterPrevote(height, cs.Round)
 			}
 		}
@@ -2106,4 +2256,3 @@ func CompareHRS(h1 int64, r1 int, s1 cstypes.RoundStepType, h2 int64, r2 int, s2
 	}
 	return 0
 }
-

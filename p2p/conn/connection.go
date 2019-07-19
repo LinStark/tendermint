@@ -684,6 +684,7 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 	if chDesc.RecvMessageCapacity == 0 {
 		chDesc.RecvMessageCapacity = defaultRecvMessageCapacity
 	}
+
 	filled = chDesc
 	return
 }

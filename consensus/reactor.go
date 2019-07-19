@@ -25,6 +25,8 @@ const (
 	VoteChannel        = byte(0x22)
 	VoteSetBitsChannel = byte(0x23)
 
+	ChangeChannel = byte(0x24)
+
 	maxMsgSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
 
 	blocksToContributeToBecomeGoodPeer = 10000
@@ -152,6 +154,13 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 			RecvBufferCapacity:  1024,
 			RecvMessageCapacity: maxMsgSize,
 		},
+		{
+			ID:                  ChangeChannel,
+			Priority:            1,
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  1024,
+			RecvMessageCapacity: maxMsgSize,
+		},
 	}
 }
 
@@ -203,27 +212,51 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	}
 
 	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		conR.Switch.StopPeerForError(src, err)
-		return
-	}
+	flag := true
 
-	if err = msg.ValidateBasic(); err != nil {
-		conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		conR.Switch.StopPeerForError(src, err)
-		return
+	if err != nil {
+		str := string(msgBytes)
+		changestr := "send the leader"
+		if str != changestr {
+			conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+			conR.Switch.StopPeerForError(src, err)
+			return
+		} else {
+			flag = false
+		}
+
+	}
+	if flag {
+		if err = msg.ValidateBasic(); err != nil {
+			conR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
+			conR.Switch.StopPeerForError(src, err)
+			return
+		}
 	}
 
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
 	// Get peer states
 	ps, ok := src.Get(types.PeerStateKey).(*PeerState)
 	if !ok {
 		panic(fmt.Sprintf("Peer %v has no state", src))
 	}
-
 	switch chID {
+	case ChangeChannel:
+		cmsg := &changeMessage{ //TODO
+			Height: conR.conS.Height,
+			Round:  100,
+		}
+
+		conR.conS.changeMessage <- msgInfo{cmsg, src.ID()}
+		/*
+			cmsg := &timeoutInfo{
+				Duration time.Duration         `json:"duration"`
+				Height   int64                 `json:"height"`
+				Round    int                   `json:"round"`
+				Step     cstypes.RoundStepType `json:"step"`
+			}
+			conR.conS.changeMessage <- msgInfo{cmsg, src.ID()}
+		*/
 	case StateChannel:
 		switch msg := msg.(type) {
 		case *NewRoundStepMessage:
@@ -344,7 +377,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		conR.Logger.Error(fmt.Sprintf("Unknown chId %X", chID))
 	}
 
-	if err != nil {
+	if err != nil && flag == true {
 		conR.Logger.Error("Error in Receive()", "err", err)
 	}
 }
@@ -1522,6 +1555,40 @@ func (m *BlockPartMessage) ValidateBasic() error {
 	}
 	if err := m.Part.ValidateBasic(); err != nil {
 		return fmt.Errorf("Wrong Part: %v", err)
+	}
+	return nil
+}
+
+type changeMessage struct {
+	//Duration time.Duration         `json:"duration"`
+	Height int64 `json:"height"`
+	Round  int   `json:"round"`
+	//Step     cstypes.RoundStepType `json:"step"`
+}
+
+/*
+type timeoutInfo struct {
+	Duration time.Duration         `json:"duration"`
+	Height   int64                 `json:"height"`
+	Round    int                   `json:"round"`
+	Step     cstypes.RoundStepType `json:"step"`
+}
+
+func (t *timeoutInfo) ValidateBasic() error {
+	if t.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if t.Round < 0 {
+		return errors.New("Negative Round")
+	}
+	return nil
+}*/
+func (t *changeMessage) ValidateBasic() error {
+	if t.Height < 0 {
+		return errors.New("Negative Height")
+	}
+	if t.Round < 0 {
+		return errors.New("Negative Round")
 	}
 	return nil
 }

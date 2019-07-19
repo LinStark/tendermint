@@ -245,9 +245,28 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
 func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
+
 	if err := pv.signProposal(chainID, proposal); err != nil {
+
 		return fmt.Errorf("error signing proposal: %v", err)
 	}
+	return nil
+}
+
+func (pv *FilePV) SignChangeProposal(chainID string, proposal *types.Proposal) error {
+
+	pv.LastSignState.Height -= 1
+
+	if err := pv.signProposal(chainID, proposal); err != nil {
+
+		return fmt.Errorf("error signing proposal: %v", err)
+	}
+	return nil
+}
+func (pv *FilePV) SubHeight(height int64) error {
+
+	pv.LastSignState.Height = height
+	fmt.Println("in sub height ,", pv.LastSignState.Height)
 	return nil
 }
 
@@ -322,6 +341,7 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
+
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 
 	lss := pv.LastSignState
@@ -330,9 +350,7 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 	if err != nil {
 		return err
 	}
-
 	signBytes := proposal.SignBytes(chainID)
-
 	// We might crash before writing to the wal,
 	// causing us to try to re-sign for the same HRS.
 	// If signbytes are the same, use the last signature.
@@ -349,7 +367,6 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 		}
 		return err
 	}
-
 	// It passed the checks. Sign the proposal
 	sig, err := pv.Key.PrivKey.Sign(signBytes)
 	if err != nil {

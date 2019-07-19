@@ -173,8 +173,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
-	fmt.Println("next---------", state.NextValidators)
-	fmt.Println("now---------", state.Validators)
+
 	// Lock mempool, commit app state, update mempoool.
 	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
@@ -579,7 +578,8 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 
 	// Sanity check that commit length matches validator set size -
 	// only applies after first block
-	if block.Height > 1 {
+	fmt.Println("block.Ischange is ", block.IsChange)
+	if block.Height > 1 && block.IsChange == false {
 		precommitLen := len(block.LastCommit.Precommits)
 		valSetLen := len(lastValSet.Validators)
 		if precommitLen != valSetLen {

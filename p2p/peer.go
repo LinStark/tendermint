@@ -334,7 +334,20 @@ func PeerMetrics(metrics *Metrics) PeerOption {
 }
 
 func (p *peer) metricsReporter() {
+
+	i := 0
 	for {
+
+		fmt.Println("========================check it =================", i)
+		i += 1
+		if i == 4 {
+			fmt.Println("----------check the leader the alive-------")
+			ChangeChannel := byte(0x24)
+			str := "send the leader"
+			data := []byte(str)
+			p.Send(ChangeChannel, data)
+		}
+
 		select {
 		case <-p.metricsTicker.C:
 			status := p.mconn.Status()

@@ -160,6 +160,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chID] = reactor
 	}
+
 	sw.reactors[name] = reactor
 	reactor.SetSwitch(sw)
 	return reactor

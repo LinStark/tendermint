@@ -88,11 +88,22 @@ func (ve *SignerValidatorEndpoint) SignVote(chainID string, vote *types.Vote) er
 
 // SignProposal implements PrivValidator.
 func (ve *SignerValidatorEndpoint) SignProposal(chainID string, proposal *types.Proposal) error {
+	
 	ve.mtx.Lock()
 	defer ve.mtx.Unlock()
 	return ve.signer.SignProposal(chainID, proposal)
 }
 
+func (ve *SignerValidatorEndpoint) SignChangeProposal(chainID string, proposal *types.Proposal) error {
+	
+	ve.mtx.Lock()
+	defer ve.mtx.Unlock()
+	return ve.signer.SignProposal(chainID, proposal)
+}
+
+func (ve *SignerValidatorEndpoint) SubHeight(int64) error {
+	return nil
+}
 //--------------------------------------------------------
 // More thread safe methods proxied to the signer
 

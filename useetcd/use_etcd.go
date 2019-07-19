@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.etcd.io/etcd/clientv3"
 	"time"
+	"net"
 )
 
 type Use_Etcd struct {
@@ -101,12 +102,11 @@ func (e Use_Etcd)Query(key string)(value []byte){
 
 
 func (e Use_Etcd)PingLeader(key string)(flag bool){
-	leader_is_alive:=true //TODO
-	if leader_is_alive{
-	
-		flag = true
-	}else{
-		flag = false	
+	ip:=string(e.Query(key))
+	conn, err := net.DialTimeout("tcp", ip, 2*time.Second)
+	if err==nil{
+		conn.Close()
+	return true
 	}
-	return flag
+	return false
 }

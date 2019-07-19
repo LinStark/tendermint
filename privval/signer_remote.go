@@ -118,7 +118,30 @@ func (sc *SignerRemote) SignProposal(chainID string, proposal *types.Proposal) e
 
 	return nil
 }
+func (sc *SignerRemote) SignChangeProposal(chainID string, proposal *types.Proposal) error {
+	err := writeMsg(sc.conn, &SignProposalRequest{Proposal: proposal})
+	if err != nil {
+		return err
+	}
 
+	res, err := readMsg(sc.conn)
+	if err != nil {
+		return err
+	}
+	resp, ok := res.(*SignedProposalResponse)
+	if !ok {
+		return ErrUnexpectedResponse
+	}
+	if resp.Error != nil {
+		return resp.Error
+	}
+	*proposal = *resp.Proposal
+
+	return nil
+}
+func (sc *SignerRemote) SubHeight(int64) error {
+	return nil
+}
 // Ping is used to check connection health.
 func (sc *SignerRemote) Ping() error {
 	err := writeMsg(sc.conn, &PingRequest{})

@@ -16,6 +16,8 @@ type PrivValidator interface {
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
+	SignChangeProposal(chainID string, proposal *Proposal) error
+	SubHeight(int64) error
 }
 
 //----------------------------------------
@@ -82,6 +84,7 @@ func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 // Implements PrivValidator.
 func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	useChainID := chainID
+
 	if pv.breakProposalSigning {
 		useChainID = "incorrect-chain-id"
 	}
@@ -91,6 +94,23 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 		return err
 	}
 	proposal.Signature = sig
+	return nil
+}
+func (pv *MockPV) SignChangeProposal(chainID string, proposal *Proposal) error {
+	useChainID := chainID
+
+	if pv.breakProposalSigning {
+		useChainID = "incorrect-chain-id"
+	}
+	signBytes := proposal.SignBytes(useChainID)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	proposal.Signature = sig
+	return nil
+}
+func (pv *MockPV) SubHeight(int64) error {
 	return nil
 }
 
@@ -119,6 +139,7 @@ func (pv *erroringMockPV) SignVote(chainID string, vote *Vote) error {
 
 // Implements PrivValidator.
 func (pv *erroringMockPV) SignProposal(chainID string, proposal *Proposal) error {
+
 	return ErroringMockPVErr
 }
 

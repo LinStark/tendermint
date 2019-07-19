@@ -47,6 +47,36 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+func (vals *ValidatorSet) UpdateValidators() *ValidatorSet {
+	//把候选leader的权重调高，把它换成新的leader
+
+	copy := vals.Copy()
+	var nextLeader *Validator
+	leaderPower := copy.Proposer.VotingPower
+	if copy.Proposer.VotingPower != copy.Validators[0].VotingPower {
+		nextLeader = copy.Validators[0]
+	} else {
+		nextLeader = copy.Validators[1]
+	}
+	nextIndex := 0
+	for i, val := range vals.Validators {
+		if nextLeader.VotingPower < val.VotingPower {
+			//寻找只比leader小的validator
+			if val.VotingPower != copy.Proposer.VotingPower {
+				//不是leader
+				nextLeader = val
+				nextIndex = i
+			}
+		}
+	}
+	copy.Validators[nextIndex].VotingPower = leaderPower + 100
+	nextLeader.VotingPower = leaderPower + 100
+	copy.Proposer = nextLeader //把leader更换成新的
+	fmt.Println("this is the copy", copy)
+
+	return copy
+}
+
 // NewValidatorSet initializes a ValidatorSet by copying over the
 // values from `valz`, a list of Validators. If valz is nil or empty,
 // the new ValidatorSet will have an empty list of Validators.

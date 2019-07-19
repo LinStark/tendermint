@@ -8,16 +8,18 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
-	useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
 //-----------------------------------------------------
 // Validate block
 func checkOldLeader(shard string) error {
-	e := useetcd.Use_Etcd{
-		Endpoints: []string{"192.168.5.56:2379"},
-	}
-	alive := e.PingLeader(shard)
+	/*
+		e := useetcd.Use_Etcd{
+			Endpoints: []string{"192.168.5.56:2379"},
+		}
+		alive := e.PingLeader(shard)
+	*/
+	alive := false
 	if alive {
 		return errors.New("the old leader is still alive")
 	}
@@ -33,6 +35,8 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 			return err
 		}
 	}
+	fmt.Println("==============from the validateblock ===============")
+	fmt.Println(block)
 	if flag {
 		if err := block.ValidateBasic(); err != nil {
 			return err
@@ -93,6 +97,7 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 				block.LastResultsHash,
 			)
 		}
+		fmt.Println("this is from validate ,", state.Validators)
 		if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
 			return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
 				state.Validators.Hash(),

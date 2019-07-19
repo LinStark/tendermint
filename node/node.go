@@ -870,7 +870,7 @@ func makeNodeInfo(
 		Version:         version.TMCoreSemVer,
 		Channels: []byte{
 			bc.BlockchainChannel,
-			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
+			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,cs.ChangeChannel,
 			mempl.MempoolChannel,
 			evidence.EvidenceChannel,
 		},
