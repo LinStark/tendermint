@@ -28,7 +28,9 @@ func calculateStatistics(
 	duration int,
 ) (*statistics, error) {
 	timeEnd := timeStart.Add(time.Duration(duration) * time.Second)
-
+	fmt.Println("开始时间：",timeStart)
+	fmt.Println("持续时间/s",duration)
+	fmt.Println("结束时间：",timeEnd)
 	stats := &statistics{
 		BlocksThroughput: metrics.NewHistogram(metrics.NewUniformSample(1000)),
 		TxsThroughput:    metrics.NewHistogram(metrics.NewUniformSample(1000)),

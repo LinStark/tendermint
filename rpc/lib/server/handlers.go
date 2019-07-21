@@ -6,8 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"sort"
@@ -21,6 +24,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+
 )
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
@@ -114,6 +118,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		}
 
 		var request types.RPCRequest
+
 		err = json.Unmarshal(b, &request)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
@@ -129,33 +134,54 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
 			return
 		}
-
-		rpcFunc := funcMap[request.Method]
-		if rpcFunc == nil || rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
+		//入口
+		if(request.Method=="broadcast_tx_commit_trans"){
+			tx :=types.RPCRequest{
+				JSONRPC: "2.0",
+				ID:      types.JSONRPCStringID("trans"),
+				Method:"broadcast_tx_commit",
+				Params:  request.Params,
+			}
+			rand.Seed(time.Now().Unix())
+			rnd := rand.Intn(3)
+			fmt.Println("request.receiver:",request.Receiver)
+			defaultShardIp:=Get(request.Receiver)
+			port:=[]string{"26657","36657","46657"}
+			defaultShardIp = "http://"+defaultShardIp+":"+port[rnd]
+			Send2TEN2(defaultShardIp,tx)
+			fmt.Println("接收到的方法：",request.Method)
+			fmt.Println("leader要发送给分片的ip：",defaultShardIp)
+			WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID,Content:"Success"})
 			return
-		}
-
-		ctx := &types.Context{JSONReq: &request, HTTPReq: r}
-		args := []reflect.Value{reflect.ValueOf(ctx)}
-		if len(request.Params) > 0 {
-			fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
-			if err != nil {
-				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+		}else {
+			//Now, fetch the RPCFunc and execute it.
+			rpcFunc := funcMap[request.Method]
+			if rpcFunc == nil || rpcFunc.ws {
+				WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
 				return
 			}
-			args = append(args, fnArgs...)
-		}
 
-		returns := rpcFunc.f.Call(args)
+			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
+			args := []reflect.Value{reflect.ValueOf(ctx)}
+			if len(request.Params) > 0 {
+				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
+				if err != nil {
+					WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					return
+				}
+				args = append(args, fnArgs...)
+			}
 
-		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
-		result, err := unreflectResult(returns)
-		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
-			return
+			returns := rpcFunc.f.Call(args)
+			fmt.Println("method:", request.Method)
+			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+			result, err := unreflectResult(returns)
+			if err != nil {
+				WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
+				return
+			}
+			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
 	}
 }
 
@@ -586,7 +612,62 @@ func (wsc *wsConnection) Context() context.Context {
 	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
 	return wsc.ctx
 }
+func Get(key string)(value string){
 
+	A := "192.168.5.56"
+	B := "192.168.5.57"
+	C := "192.168.5.58"
+	D := "192.168.5.60"
+	if key == "A"{
+		value = A
+	}else if key=="B"{
+		value = B
+	}else if key=="C"{
+		value = C
+	}else {
+		value = D
+	}
+	return value
+}
+func Send2TEN2(ShardIp string,tx1 types.RPCRequest){
+
+	//tx :=&TX{
+	//	Txtype:"relaytx",
+	//	Sender: "A",
+	//	Receiver: "B",
+	//	ID      : sha256.Sum256([]byte(content)),
+	//	Content :[]string{content}}
+	//res, _  = json.Marshal(tx)
+	client := &http.Client{}
+	requestBody := new(bytes.Buffer)
+
+	json.NewEncoder(requestBody).Encode(tx1)
+
+	//生成要访问的url
+	url := ShardIp
+	req, err := http.NewRequest("POST", url, requestBody)
+	req.Header.Set("Content-Type", "application/json")
+	//url=url+tx1
+	//fmt.Println(url)
+	//提交请求
+
+
+	if err != nil {
+		panic(err)
+	}
+
+	//处理返回结果
+	response, _ := client.Do(req)
+
+	//将结果定位到标准输出 也可以直接打印出来 或者定位到其他地方进行相应的处理
+	stdout := os.Stdout
+	_, err = io.Copy(stdout, response.Body)
+
+	//返回的状态码
+	status := response.StatusCode
+
+	fmt.Println(status)
+}
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
@@ -641,37 +722,57 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 				continue
 			}
-
-			// Now, fetch the RPCFunc and execute it.
-			rpcFunc := wsc.funcMap[request.Method]
-			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-				continue
-			}
-
-			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
-				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+			fmt.Println("传过来的mathod：",request.Method)
+			//if(request.Method=="broadcast_tx_commit_relay"){
+			//	tx :=types.RPCRequest{
+			//		JSONRPC: "2.0",
+			//		ID:      types.JSONRPCStringID("relay"),
+			//		Method:"broadcast_tx_commit",
+			//		Params:  request.Params,
+			//	}
+			//	fmt.Println("request.params")
+			//	fmt.Println(request.Params)
+			//	defaultShardIp:=Get(request.Receiver)
+			//	port:=[]string{"26657","36657","46657"}
+			//	defaultShardIp = "http://"+defaultShardIp+":"+port[request.Flag]
+			//	Send2TEN2(defaultShardIp,tx)
+			//	fmt.Println("接收到的方法：",request.Method)
+			//	fmt.Println("leader要发送给分片的ip：",defaultShardIp)
+			//	wsc.Stop()
+			//	return
+			//}else{
+				// Now, fetch the RPCFunc and execute it.
+				rpcFunc := wsc.funcMap[request.Method]
+				if rpcFunc == nil {
+					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
 					continue
 				}
-				args = append(args, fnArgs...)
-			}
 
-			returns := rpcFunc.f.Call(args)
+				ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+				args := []reflect.Value{reflect.ValueOf(ctx)}
+				if len(request.Params) > 0 {
+					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+					if err != nil {
+						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+						continue
+					}
+					args = append(args, fnArgs...)
+				}
 
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+				returns := rpcFunc.f.Call(args)
 
-			result, err := unreflectResult(returns)
-			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
-				continue
-			}
+				// TODO: Need to encode args/returns to string if we want to log them
+				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
 
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+				result, err := unreflectResult(returns)
+				if err != nil {
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+					continue
+				}
+
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+			//}
+
 		}
 	}
 }

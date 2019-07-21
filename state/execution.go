@@ -1,23 +1,22 @@
 package state
 
 import (
-	"fmt"
-	"encoding/hex"
-	"time"
-	"encoding/json"
-	"io/ioutil"
-	"os"
-	"net/http"
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tp "github.com/tendermint/tendermint/identypes"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tp "github.com/tendermint/tendermint/identypes"
-	useetcd "github.com/tendermint/tendermint/useetcd"
-
+	"io/ioutil"
+	"net/http"
+	"os"
+	"time"
+	useetcd"github.com/tendermint/tendermint/useetcd"
 )
 
 //-----------------------------------------------------------------------------
@@ -109,7 +108,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 // ValidateBlock validates the given block against the given state.
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
-// ie. to verify evidence from a validator at an old height.
+// ie. to verify evidence from a validator at an old height.add
 func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
 	return validateBlock(blockExec.evpool, blockExec.db, state, block)
 }
@@ -340,7 +339,25 @@ func (blockExec *BlockExecutor)  SendAddedRelayTxs(txs []tp.TX){
 
 //---------------------------------------------------------------------------
 //ETCD
-
+func get(key string)(value string){
+	A:="192.168.5.56"
+	B:="192.168.5.57"
+	C:="192.168.5.58"
+	D:="192.168.5.60"
+	if key=="A"{
+		value=A
+	}
+	if key=="B"{
+		value=B
+	}
+	if key=="C"{
+		value=C
+	}
+	if key=="D"{
+		value=D
+	}
+	return value
+}
 
 
 func (blockExec *BlockExecutor)Sendtxs(tx tp.TX,flag int,client *http.Client){
@@ -351,8 +368,10 @@ func (blockExec *BlockExecutor)Sendtxs(tx tp.TX,flag int,client *http.Client){
 	fmt.Println("tx.Sender",tx.Sender,"tx.Receiver",tx.Receiver,"Txtype",tx.Txtype)
 	if tx.Txtype=="addTx"{
 		SiteIp = string(e.Query(tx.Sender))
+		//SiteIp=get(tx.Sender)
 	} else{
 		SiteIp = string(e.Query(tx.Receiver))
+		//SiteIp=get(tx.Receiver)
 	}
 	fmt.Println(SiteIp)
 	blockExec.Send2TEN(tx,SiteIp,flag,client)
@@ -393,12 +412,21 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 */
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      string       `json:"id"`
+	ID      string           `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+	Sender string  		    `json:"Sender"` //添加发送者
+	Receiver string         `json:"Receiver"` //添加接受者
+	Flag int				 `json:"Flag"`
 }
 func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
-
+	//port:=[]string{"26657","36657","46657"}
+	if tx.Txtype=="addTx"{
+		fmt.Println("现在我要发送addtx出去")
+	}
+	Sender:=tx.Sender
+	Receiver:=tx.Receiver
+	fmt.Println("receiver:",Receiver)
 	res, _ := json.Marshal(tx)
 	requestBody := new(bytes.Buffer)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})	       
@@ -409,12 +437,16 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 	rawParamsJSON := json.RawMessage(paramsJSON)
 	rc:=&RPCRequest{
 		JSONRPC: "2.0",
+		Sender:  Sender,
+		Receiver: Receiver,
+		Flag:flag,
 		ID:      "tm-bench",
-		Method:  "broadcast_tx_commit",
+		Method:  "broadcast_tx_commit_trans",
 		Params:  rawParamsJSON,
 	}
+	fmt.Println("sender:",rc.Sender)
 	json.NewEncoder(requestBody).Encode(rc)
-	url := "http://"+ip
+	url := "http://"+ip+"26657"
 	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
@@ -422,7 +454,10 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 	if err != nil {
 		panic(err)
 	}
-	response, _ := client.Do(req)
+	response, err := client.Do(req)
+	if(err!=nil){
+		fmt.Println(err)
+	}
 	body, _ := ioutil.ReadAll(response.Body)
 	var f interface{}
 	jserror:= json.Unmarshal(body, &f)
