@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	tp "github.com/tendermint/tendermint/identypes"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -85,13 +86,6 @@ type RPCRequest struct {
 	ID      string          `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
-}
-type STX struct {
-	Txtype   string
-	Sender   string
-	Receiver string
-	ID       [sha256.Size]byte
-	Content  []string
 }
 
 // ConsensusState handles execution of the consensus algorithm.
@@ -919,10 +913,11 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if height == 1 {
 		//如果高度为1并且是leader，则需要向etcd中更新地址
-		cs.sendLeaderToEtcd(address)
+		//cs.sendLeaderToEtcd(address)
 	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
+		fmt.Println("=============i am leader ==================")
 		cs.decideProposal(height, round)
 	} else {
 		logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
@@ -937,7 +932,7 @@ func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
 		e := useetcd.Use_Etcd{
-			Endpoints: []string{"192.168.5.56:2379"},
+			//Endpoints: []string{"192.168.5.56:2379"},
 		}
 		e.Update(getShard(), getPort())
 	}
@@ -1410,8 +1405,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	if !cs.isEqual(lastLeaderAddress) {
 		if cs.isLeader() {
-			e := useetcd.NewEtcd()
-			e.Update(getShard(), getPort())
+			//e := useetcd.NewEtcd()
+			//e.Update(getShard(), getPort())
+			fmt.Println("------change the leader--------")
 			cs.reactorViaCheckpoint(height)
 		}
 	}
@@ -1444,12 +1440,12 @@ func (cs *ConsensusState) reactorViaCheckpoint(height int64) {
 }
 
 //有checkpoint过程
-func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
+func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []tp.TX {
 	//input:最后一个区块高度
 	var tblock *types.Block
 	//从后往前遍历区块，直到找到checkpoint记录
-	var waitComTxs []STX //待确认的tx数组
-	var delTxs []STX     //待删除的tx
+	var waitComTxs []tp.TX //待确认的tx数组
+	var delTxs []tp.TX     //待删除的tx
 	flag := true
 	var lastCheckHeight int64 //上一次checkpoint的高度
 	lastCheckHeight = 0
@@ -1465,7 +1461,7 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
 				encodeStr := hex.EncodeToString(data)
 				temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
 
-				var t STX
+				var t tp.TX
 				json.Unmarshal(temptx, &t)
 				if t.Txtype == "relaytx" {
 					//tblock.Shard="A" //TODO!!!!!!!!!!!!
@@ -1483,7 +1479,7 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
 						flag = false
 					}
 					for j := 0; j < len(t.Content); j++ {
-						var cpt STX
+						var cpt tp.TX
 						json.Unmarshal([]byte(t.Content[j]), &cpt)
 						waitComTxs = append(waitComTxs, cpt) //TODO
 					}
@@ -1493,14 +1489,17 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []STX {
 		}
 
 	}
-	var cpTxs []STX
+	var cpTxs []tp.TX
 	cpTxs = removeAddedTxs(waitComTxs, delTxs)
+	for _, tx := range cpTxs {
+		cs.blockExec.Add2RelaytxDB(tx)
+	}
 	return cpTxs
 	//返回所有未确认的tx，后续需要重新发送这些交易
 
 }
 
-func conver2cptx(cpTxs []STX, height int64) STX {
+func conver2cptx(cpTxs []tp.TX, height int64) tp.TX {
 
 	var content []string
 	fmt.Println("cpTxs length is ", len(cpTxs))
@@ -1508,7 +1507,7 @@ func conver2cptx(cpTxs []STX, height int64) STX {
 		marshalTx, _ := json.Marshal(cpTxs[i])
 		content = append(content, string(marshalTx))
 	}
-	cptx := &STX{
+	cptx := &tp.TX{
 		Txtype:   "checkpoint",
 		Sender:   strconv.FormatInt(height, 10), //用sender记录高度
 		Receiver: "",
@@ -1534,8 +1533,7 @@ func Get(key string) (value string) {
 	}
 	return value
 }
-func Sendtxs(cptxs []STX) []STX {
-
+func Sendtxs(cptxs []tp.TX) []tp.TX {
 	client := &http.Client{}
 	port := [3]string{"26657", "36657", "46657"}
 	SiteIp := ""
@@ -1592,8 +1590,8 @@ func Sendtxs(cptxs []STX) []STX {
 
 }
 
-func removeAddedTxs(waitComTxs []STX, delTxs []STX) []STX {
-	var cpTxs []STX
+func removeAddedTxs(waitComTxs []tp.TX, delTxs []tp.TX) []tp.TX {
+	var cpTxs []tp.TX
 	flag := true
 	for i := 0; i < len(waitComTxs); i++ {
 		for j := 0; j < len(delTxs); j++ {
@@ -1609,7 +1607,7 @@ func removeAddedTxs(waitComTxs []STX, delTxs []STX) []STX {
 	return cpTxs
 }
 
-func Sendcptx(tx STX, flag int) {
+func Sendcptx(tx tp.TX, flag int) {
 
 	res, _ := json.Marshal(tx)
 	fmt.Println("-----------------sendcheckpointtx-----------------------")

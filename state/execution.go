@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -154,7 +153,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	// Update the state with the block and responses.
-	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates)
+	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, block.Height)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -633,6 +632,7 @@ func updateState(
 	header *types.Header,
 	abciResponses *ABCIResponses,
 	validatorUpdates []*types.Validator,
+	height int64,
 ) (State, error) {
 
 	// Copy the valset so we can apply changes from EndBlock
@@ -641,11 +641,14 @@ func updateState(
 
 	// Update the validator set with the latest abciResponses.
 	flag := false
-	rand.Seed(time.Now().Unix())
-	randnum := rand.Intn(100) // [0,100)的随机值，返回值为int
-	if randnum < 10 {
+	if height%10 == 0 {
 		flag = true
 	}
+	// rand.Seed(time.Now().Unix())
+	// randnum := rand.Intn(100) // [0,100)的随机值，返回值为int
+	// if randnum < 10 {
+	// 	flag = true
+	// }
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		//为了固定leader，可以不更新validator set
