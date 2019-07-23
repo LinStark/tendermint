@@ -75,7 +75,11 @@ func (e Use_Etcd)Update(key string,value string){
 	fmt.Println("put success!")
 	return
 }
-
+func NewEtcd()(*Use_Etcd){
+	return &Use_Etcd{
+		Endpoints: []string{"192.168.5.56:2379"},
+	}
+}
 
 func (e Use_Etcd)Query(key string)(value []byte){
 	cli,err := clientv3.New(clientv3.Config{

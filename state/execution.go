@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -639,24 +640,31 @@ func updateState(
 	nValSet := state.NextValidators.Copy()
 
 	// Update the validator set with the latest abciResponses.
-
+	flag := false
+	rand.Seed(time.Now().Unix())
+	randnum := rand.Intn(100) // [0,100)的随机值，返回值为int
+	if randnum < 10 {
+		flag = true
+	}
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		//为了固定leader，可以不更新validator set
-		/*
-			err := nValSet.UpdateWithChangeSet(validatorUpdates)
-			if err != nil {
-				return state, fmt.Errorf("Error changing validator set: %v", err)
-			}
-		*/
+
+		err := nValSet.UpdateWithChangeSet(validatorUpdates)
+		if err != nil {
+			return state, fmt.Errorf("Error changing validator set: %v", err)
+		}
+
 		// Change results from this height but only applies to the next next height.
 		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
 	// Update validator proposer priority and set state variables.
-	//不必更新set中的优先级
-	//nValSet.IncrementProposerPriority(1)
 
+	//不必更新set中的优先级
+	if flag {
+		nValSet.IncrementProposerPriority(1)
+	}
 	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged

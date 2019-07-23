@@ -1378,6 +1378,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
+	lastLeaderAddress := cs.state.Validators.GetProposer().Address
 	flag := cs.isLeader()
 
 	// Execute and commit the block, update and save the state, and update the mempool.
@@ -1407,31 +1408,39 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Schedule Round0 to start soon.
 	cs.scheduleRound0(&cs.RoundState)
 
+	if !cs.isEqual(lastLeaderAddress) {
+		if cs.isLeader() {
+			e := useetcd.NewEtcd()
+			e.Update(getShard(), getPort())
+			cs.reactorViaCheckpoint(height)
+		}
+	}
 	// By here,
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 
-	//从数据库中的检查点中恢复数据
-	//cs.reactorViaCheckpoint(height)
-
 }
+
+func (cs *ConsensusState) isEqual(lastProposer []byte) bool {
+	nextProposer := cs.Validators.GetProposer().Address
+	result := bytes.Equal(lastProposer, nextProposer)
+	return result
+}
+
 func (cs *ConsensusState) isLeader() (flag bool) {
 
 	address := cs.privValidator.GetPubKey().Address()
-	fmt.Println("my address is ", address)
 	flag = cs.isProposer(address)
 	return flag
 }
 func (cs *ConsensusState) reactorViaCheckpoint(height int64) {
-	if height%20 == 0 {
-		//一次checkpoint,更新
-		cpTxs := cs.CheckBlockTxInfo(height)
-		cpTxs = Sendtxs(cpTxs) //TODO需要在分布式环境下测试
-		cptx := conver2cptx(cpTxs, height)
-		Sendcptx(cptx, 0) //TODO 改为一定要加入成功
 
-	}
+	//一次checkpoint,更新
+	cpTxs := cs.CheckBlockTxInfo(height)
+	cpTxs = Sendtxs(cpTxs) //TODO需要在分布式环境下测试
+	cptx := conver2cptx(cpTxs, height)
+	Sendcptx(cptx, 0) //TODO 改为一定要加入成功
 }
 
 //有checkpoint过程
