@@ -349,6 +349,7 @@ FOR_LOOP:
 				blocksSynced++
 
 				if blocksSynced%100 == 0 {
+
 					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
 					bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
 						"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)

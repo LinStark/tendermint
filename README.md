@@ -1,5 +1,8 @@
 # Tendermint
 
+更新内容说明
+----------------------------------------------------------------------
+
 1、leader由随机数触发更换（state/execution.go  updateState函数中
 2、leader更换后会在etcd中更新新leader的ip和端口（PS：新产生的leader后的下一个区块会由第三个节点发放，但是只产生这一个区块后，就会一直由新leader接管）
 3、新的leader产生后，会从区块数据库中回滚没处理完的rtx交易，并且发布一个checkpoint交易记录（这条tx会出现“Timed out waiting for tx to be included in a block”的错误日志，可能没被成功写入）
