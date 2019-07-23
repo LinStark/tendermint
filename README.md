@@ -3,19 +3,18 @@
 更新内容说明
 -----------
 
-1、leader由随机数触发更换（state/execution.go  updateState函数中\<br>
-2、leader更换后会在etcd中更新新leader的ip和端口（PS：新产生的leader后的下一个区块会由第三个节点发放，但是只产生这一个区块后，就会一直由新leader接管）\<br>
-3、新的leader产生后，会从区块数据库中回滚没处理完的rtx交易，并且发布一个checkpoint交易记录（这条tx会出现“Timed out waiting for tx to be included in a block”的错误日志，可能没被成功写入）\<br>
-4、只有leader会执行applyblcok中的blockExec.CheckRelayTxs(block)函数\<br>
-blockExec.CheckRelayTxs(block)实现的主要功能：\<br>
-CheckCommitedBlock部分\<br>
-1、检测即将被commit的区块中tx的Txtype是否是relaytx，如果是则发送给相应的reciver区块,并且加入leader节点的内存数据库中\<br>
-2、检测即将被commit的区块中tx的Txtype是否是addtx，如果是，则需要将内存数据库中对应relaytx删除掉\<br>
-UpdateRelaytxDB()部分\<br>
-3、更新内存中的relaytx数据库的状态，如果有rtx已经过了20个区块还没有被确认，需要重新发送一次。也可能是对方区块已接收，返回addtx时候丢失，这种情况开可以根据发送时候返回的日志，如果是“Error on broadcastTxCommit: Tx already exists in cache”，则将内存数据库中对应relaytx删除掉\<br>
-发送checkpoint部分\<br>
-4、每20个，更新一次checkpoint。从内存数据库中拿到所有的tx，转化成tx格式（用sender写发送时候区块高度）
-\<br>
+1、leader由随机数触发更换（state/execution.go  updateState函数中  
+2、leader更换后会在etcd中更新新leader的ip和端口（PS：新产生的leader后的下一个区块会由第三个节点发放，但是只产生这一个区块后，就会一直由新leader接管）  
+3、新的leader产生后，会从区块数据库中回滚没处理完的rtx交易，并且发布一个checkpoint交易记录（这条tx会出现“Timed out waiting for tx to be included in a block”的错误日志，可能没被成功写入）   
+4、只有leader会执行applyblcok中的blockExec.CheckRelayTxs(block)函数   
+blockExec.CheckRelayTxs(block)实现的主要功能：  
+CheckCommitedBlock部分  
+1、检测即将被commit的区块中tx的Txtype是否是relaytx，如果是则发送给相应的reciver区块,并且加入leader节点的内存数据库中   
+2、检测即将被commit的区块中tx的Txtype是否是addtx，如果是，则需要将内存数据库中对应relaytx删除掉   
+UpdateRelaytxDB()部分   
+3、更新内存中的relaytx数据库的状态，如果有rtx已经过了20个区块还没有被确认，需要重新发送一次。也可能是对方区块已接收，返回addtx时候丢失，这种情况开可以根据发送时候返回的日志，如果是“Error on broadcastTxCommit: Tx already exists in cache”，则将内存数据库中对应relaytx删除掉   
+发送checkpoint部分   
+4、每20个，更新一次checkpoint。从内存数据库中拿到所有的tx，转化成tx格式（用sender写发送时候区块高度）   
 
 
 
