@@ -1,4 +1,4 @@
-package use_etcd
+package useetcd
 
 import (
 	"context"
@@ -11,7 +11,6 @@ type Use_Etcd struct {
 
 	Endpoints []string
 }
-
 
 func (e Use_Etcd)Update(key string,value string){
 	cli, err := clientv3.New(clientv3.Config{

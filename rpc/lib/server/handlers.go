@@ -24,8 +24,10 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	useetcd "github.com/tendermint/tendermint/useetcd"
 
 )
+//ETCD 使用
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
@@ -144,6 +146,10 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			}
 			rand.Seed(time.Now().Unix())
 			rnd := rand.Intn(3)
+			e:=useetcd.Use_Etcd{
+				Endpoints:[]string{"192.168.5.56:2379"},
+			}
+			e.Query(request.Receiver)
 			fmt.Println("request.receiver:",request.Receiver)
 			defaultShardIp:=Get(request.Receiver)
 			port:=[]string{"26657","36657","46657"}
