@@ -88,7 +88,6 @@ type RPCRequest struct {
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
-
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
 // commits blocks to the chain and executes them against the application.
@@ -914,7 +913,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if height == 1 {
 		//如果高度为1并且是leader，则需要向etcd中更新地址
-		//cs.sendLeaderToEtcd(address)
+		cs.sendLeaderToEtcd(address)
 	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
@@ -932,7 +931,9 @@ func (cs *ConsensusState) isProposer(address []byte) bool {
 func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
-		e := useetcd.NewEtcd()
+		e := useetcd.Use_Etcd{
+			Endpoints: []string{"192.168.5.56:2379"},
+		}
 		e.Update(getShard(), getPort())
 	}
 }

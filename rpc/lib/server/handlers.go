@@ -137,6 +137,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		}
 		//入口
 		if(request.Method=="broadcast_tx_commit_trans"){
+			fmt.Printf("leader接到跨片交易信息,准备跨片")
 			tx :=types.RPCRequest{
 				JSONRPC: "2.0",
 				ID:      types.JSONRPCStringID("trans"),
@@ -723,7 +724,7 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 				continue
 			}
-			fmt.Println("传过来的mathod：",request.Method)
+			fmt.Println("传过来的method：",request.Method)
 			//if(request.Method=="broadcast_tx_commit_relay"){
 			//	tx :=types.RPCRequest{
 			//		JSONRPC: "2.0",

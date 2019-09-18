@@ -250,9 +250,9 @@ func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,
 				/*
 					if (len(t.Content)>0){
 						for i :=0;i<len(t.Content);i++{
-							var reAddTx TX
-							json.Unmarshal([]byte(t.Content[i]), &reAddTx)
-							go blockExec.Sendtxs(reAddTx,i%3)
+							var readdtx TX
+							json.Unmarshal([]byte(t.Content[i]), &readdtx)
+							go blockExec.Sendtxs(readdtx,i%3)
 						}
 
 
@@ -313,7 +313,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
 	//将需要跨片的交易按分片归类
 	for i := 0; i < len(txs); i++ {
 		flag := int(txs[i].Receiver[0]) - 65
-		txs[i].Txtype = "addTx"
+		txs[i].Txtype = "addtx"
 		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	client := &http.Client{}
@@ -337,7 +337,7 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX, flag int, client *http.Client)
 	SiteIp := ""
 	e := useetcd.NewEtcd()
 	fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
-	if tx.Txtype == "addTx" {
+	if tx.Txtype == "addtx" {
 		SiteIp = string(e.Query(tx.Sender))
 	} else {
 		SiteIp = string(e.Query(tx.Receiver))
@@ -390,8 +390,8 @@ type RPCRequest struct {
 }
 func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
 	//port:=[]string{"26657","36657","46657"}
-	e := useetcd.NewEtcd()
-	if tx.Txtype=="addTx"{
+	//e := useetcd.NewEtcd()
+	if tx.Txtype=="addtx"{
 		fmt.Println("现在我要发送addtx出去")
 	}
 	Sender:=tx.Sender
@@ -415,8 +415,9 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 		Params:  rawParamsJSON,
 	}
 	fmt.Println("sender:",rc.Sender)
+	fmt.Println("发送的方法:",rc.Method)
 	json.NewEncoder(requestBody).Encode(rc)
-	url := string(e.Query(Receiver))
+	url := "http://"+ip
 	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
