@@ -21,7 +21,7 @@ type statistics struct {
 // calculateStatistics calculates the tx / second, and blocks / second based
 // off of the number the transactions and number of blocks that occurred from
 // the start block, and the end time.
-func calculateStatistics(
+func calculateStatistics( //统计数据
 	client tmrpc.Client,
 	minHeight int64,
 	timeStart time.Time,

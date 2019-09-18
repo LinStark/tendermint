@@ -25,7 +25,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
-
 )
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
@@ -136,26 +135,26 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 		//入口
-		if(request.Method=="broadcast_tx_commit_trans"){
+		if request.Method == "broadcast_tx_commit_trans" {
 			fmt.Printf("leader接到跨片交易信息,准备跨片")
-			tx :=types.RPCRequest{
+			tx := types.RPCRequest{
 				JSONRPC: "2.0",
 				ID:      types.JSONRPCStringID("trans"),
-				Method:"broadcast_tx_commit",
+				Method:  "broadcast_tx_commit",
 				Params:  request.Params,
 			}
 			rand.Seed(time.Now().Unix())
 			rnd := rand.Intn(4)
-			fmt.Println("request.receiver:",request.Receiver)
-			defaultShardIp:=Get(request.Receiver)
-			port:=[]string{"26657","36657","46657","56657"}
-			defaultShardIp = "http://"+defaultShardIp+":"+port[rnd]
-			Send2TEN2(defaultShardIp,tx)
-			fmt.Println("接收到的方法：",request.Method)
-			fmt.Println("leader要发送给分片的ip：",defaultShardIp)
-			WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID,Content:"Success"})
+			fmt.Println("request.receiver:", request.Receiver)
+			defaultShardIp := Get(request.Receiver)
+			port := []string{"26657", "36657", "46657", "56657"}
+			defaultShardIp = "http://" + defaultShardIp + ":" + port[rnd]
+			Send2TEN2(defaultShardIp, tx)
+			fmt.Println("接收到的方法：", request.Method)
+			fmt.Println("leader要发送给分片的ip：", defaultShardIp)
+			WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID, Content: "Success"})
 			return
-		}else {
+		} else {
 			//Now, fetch the RPCFunc and execute it.
 			rpcFunc := funcMap[request.Method]
 			if rpcFunc == nil || rpcFunc.ws {
@@ -614,24 +613,24 @@ func (wsc *wsConnection) Context() context.Context {
 	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
 	return wsc.ctx
 }
-func Get(key string)(value string){
+func Get(key string) (value string) {
 
 	A := "192.168.5.56"
 	B := "192.168.5.57"
 	C := "192.168.5.58"
 	D := "192.168.5.60"
-	if key == "A"{
+	if key == "A" {
 		value = A
-	}else if key=="B"{
+	} else if key == "B" {
 		value = B
-	}else if key=="C"{
+	} else if key == "C" {
 		value = C
-	}else {
+	} else {
 		value = D
 	}
 	return value
 }
-func Send2TEN2(ShardIp string,tx1 types.RPCRequest){
+func Send2TEN2(ShardIp string, tx1 types.RPCRequest) {
 
 	//tx :=&TX{
 	//	Txtype:"relaytx",
@@ -653,7 +652,6 @@ func Send2TEN2(ShardIp string,tx1 types.RPCRequest){
 	//fmt.Println(url)
 	//提交请求
 
-
 	if err != nil {
 		panic(err)
 	}
@@ -670,7 +668,9 @@ func Send2TEN2(ShardIp string,tx1 types.RPCRequest){
 
 	fmt.Println(status)
 }
+
 // Read from the socket and subscribe to or unsubscribe from events
+
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -724,7 +724,7 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 				continue
 			}
-			fmt.Println("传过来的method：",request.Method)
+			fmt.Println("传过来的method：", request.Method)
 			//if(request.Method=="broadcast_tx_commit_relay"){
 			//	tx :=types.RPCRequest{
 			//		JSONRPC: "2.0",

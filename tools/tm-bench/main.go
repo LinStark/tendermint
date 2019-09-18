@@ -18,18 +18,28 @@ import (
 var logger = log.NewNopLogger()
 
 func main() {
+	//durationInt表示持续时间
+	//txsRate 发送交易个数
+	//connections表示链接的个数
+	//txSize 表示tx的大小
+	//verbose 冗余
+	//outputFormat 输出格式
+	//shard 分片
+	//broadcastTxmethod 传播方法
+	//allshard 全分片
 	var durationInt, txsRate, connections, txSize int
-	var verbose  bool
-	var outputFormat, shard,broadcastTxMethod,allshard string
+	var verbose bool
+	var outputFormat, shard, broadcastTxMethod, allshard string
 
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
+	//初始化数值
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flagSet.StringVar(&shard, "shard", "A", "shard of tendermint")
-	
+
 	flagSet.StringVar(&allshard, "as", "A,B,C,D", "shard of tendermint")
 	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flagSet.BoolVar(&verbose, "v", false, "Verbose output")
@@ -44,7 +54,7 @@ Examples:
 		fmt.Println("Flags:")
 		flagSet.PrintDefaults()
 	}
-
+	//
 	flagSet.Parse(os.Args[1:])
 
 	if flagSet.NArg() == 0 {
@@ -168,7 +178,7 @@ func startTransacters(
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate, txSize,shard,allshard,broadcastTxMethod)
+		t := newTransacter(e, connections, txsRate, txSize, shard, allshard, broadcastTxMethod)
 		t.SetLogger(logger)
 		go func(i int) {
 			defer wg.Done()

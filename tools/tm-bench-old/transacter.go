@@ -66,13 +66,14 @@ func (t *transacter) SetLogger(l log.Logger) {
 
 // Start opens N = `t.Connections` connections to the target and creates read
 // and write goroutines for each connection.
-func (t *transacter) Start() error {
+func (t *transacter) Start() error { //开始发送信息
 	t.stopped = false
 
 	rand.Seed(time.Now().Unix())
 
 	for i := 0; i < t.Connections; i++ {
 		c, _, err := connect(t.Target)
+		fmt.Printf("t.Target:", t.Target)
 		if err != nil {
 			return err
 		}
@@ -133,7 +134,7 @@ func (t *transacter) sendLoop(connIndex int) {
 		}
 	}()
 	c := t.conns[connIndex]
-
+	//setpinghandler意思
 	c.SetPingHandler(func(message string) error {
 		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
 		if err == websocket.ErrCloseSent {
@@ -258,7 +259,7 @@ func (t *transacter) sendLoop(connIndex int) {
 	}
 }
 
-func connect(host string) (*websocket.Conn, *http.Response, error) {
+func connect(host string) (*websocket.Conn, *http.Response, error) { //建立连接
 	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }

@@ -18,10 +18,19 @@ import (
 var logger = log.NewNopLogger()
 
 func main() {
+	//durationInt表示持续时间
+	//txsRate 发送交易个数
+	//connections表示链接的个数
+	//txSize 表示tx的大小
+	//verbose 冗余
+	//outputFormat 输出格式
+	//shard 分片
+	//broadcastTxmethod 传播方法
+	//allshard 全分片
 	var durationInt, txsRate, connections, txSize int
 	var verbose bool
 	var outputFormat, broadcastTxMethod string
-
+	//初始化数值
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
@@ -39,20 +48,18 @@ Usage:
 
 Examples:
 	tm-bench localhost:26657`)
-		fmt.Println("i am here")
-		fmt.Println("Flags:")
 		flagSet.PrintDefaults()
 	}
 
-	flagSet.Parse(os.Args[1:])//获取输入值
+	flagSet.Parse(os.Args[1:]) //获取输入值
 
 	if flagSet.NArg() == 0 {
-		flagSet.Usage()
+		flagSet.Usage() //若没有设定值，使用默认值
 		os.Exit(1)
 	}
 
 	if verbose {
-		if outputFormat == "json" {
+		if outputFormat == "json" { //json格式发
 			printErrorAndExit("Verbose mode not supported with json output.")
 		}
 		// Color errors red
@@ -80,21 +87,22 @@ Examples:
 	}
 
 	var (
-		endpoints     = strings.Split(flagSet.Arg(0), ",")
-		client        = tmrpc.NewHTTP(endpoints[0], "/websocket")
+		endpoints     = strings.Split(flagSet.Arg(0), ",")        //可以对多个连接进行访问
+		client        = tmrpc.NewHTTP(endpoints[0], "/websocket") //tmrpc.NewHTTP(连接地址，连接方式)
 		initialHeight = latestBlockHeight(client)
 	)
 
 	logger.Info("Latest block height", "h", initialHeight)
+	//设置交易器,初始化交易器
 	transacters := startTransacters(
 		endpoints,
-		connections,
+		connections, //连接数量
 		txsRate,
 		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	// Stop upon receiving SIGTERM or CTRL-C.
+	// Stop upon receiving SIGTERM or CTRL-C.中断命令
 	cmn.TrapSignal(logger, func() {
 		for _, t := range transacters {
 			t.Stop()
@@ -102,15 +110,13 @@ Examples:
 	})
 
 	// Wait until transacters have begun until we get the start time.
-	timeStart := time.Now()
+	timeStart := time.Now() //获取当前时间
 	logger.Info("Time last transacter started", "t", timeStart)
-	fmt.Println(timeStart)
-	duration := time.Duration(durationInt) * time.Second
-
-	timeEnd := timeStart.Add(duration)
+	duration := time.Duration(durationInt) * time.Second //获取持续时间
+	timeEnd := timeStart.Add(duration)                   //获取目标时间
 	logger.Info("End time for calculation", "t", timeEnd)
 	fmt.Println(timeEnd)
-	<-time.After(duration)
+	<-time.After(duration) //等待时间
 	//发送消息
 	for i, t := range transacters {
 		t.Stop()
@@ -121,8 +127,7 @@ Examples:
 	}
 	//结束消息
 	logger.Debug("Time all transacters stopped", "t", time.Now())
-	fmt.Println("11")
-	stats, err := calculateStatistics(
+	stats, err := calculateStatistics( //stats是统计数据
 		client,
 		initialHeight,
 		timeStart,
@@ -155,24 +160,24 @@ func countCrashes(crashes []bool) int {
 	return count
 }
 
-func startTransacters(
+func startTransacters( //创建多线并行状态
 	endpoints []string,
 	connections,
 	txsRate int,
 	txSize int,
-	broadcastTxMethod string,
-) []*transacter {
-	transacters := make([]*transacter, len(endpoints))
+	broadcastTxMethod string, //这是参数列表
+) []*transacter { //这是返回交易器
+	transacters := make([]*transacter, len(endpoints)) //创建等价连接器
 
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(endpoints))
+	wg := sync.WaitGroup{} //waitGroup的作用能够一直等到所有的goroutine执行完成
+	wg.Add(len(endpoints)) //相当于线程个数
 	for i, e := range endpoints {
+		//e是目标地址 i是计数单位
 		t := newTransacter(e, connections, txsRate, txSize, broadcastTxMethod)
 
-		t.SetLogger(logger)
-		go func(i int) {
-			defer wg.Done()
+		t.SetLogger(logger) //写日志
+		go func(i int) {    //以并发的方式调用匿名函数func
+			defer wg.Done() //开启一个t并行器
 			if err := t.Start(); err != nil {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
