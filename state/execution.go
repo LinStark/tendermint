@@ -335,9 +335,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
 
 func (blockExec *BlockExecutor) Sendtxs(tx tp.TX, flag int, client *http.Client) {
 	SiteIp := ""
-	e := useetcd.Use_Etcd{
-		Endpoints: []string{"192.168.5.56:2379"},
-	}
+	e := useetcd.NewEtcd()
 	fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
 	if tx.Txtype == "addTx" {
 		SiteIp = string(e.Query(tx.Sender))
@@ -383,13 +381,22 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 */
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      string          `json:"id"`
+	ID      string           `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+	Sender string  		    `json:"Sender"` //添加发送者
+	Receiver string         `json:"Receiver"` //添加接受者
+	Flag int				 `json:"Flag"`
 }
-
-func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *http.Client) {
-
+func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
+	//port:=[]string{"26657","36657","46657"}
+	e := useetcd.NewEtcd()
+	if tx.Txtype=="addTx"{
+		fmt.Println("现在我要发送addtx出去")
+	}
+	Sender:=tx.Sender
+	Receiver:=tx.Receiver
+	fmt.Println("receiver:",Receiver)
 	res, _ := json.Marshal(tx)
 	requestBody := new(bytes.Buffer)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
@@ -398,14 +405,18 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *
 		os.Exit(1)
 	}
 	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc := &RPCRequest{
+	rc:=&RPCRequest{
 		JSONRPC: "2.0",
+		Sender:  Sender,
+		Receiver: Receiver,
+		Flag:flag,
 		ID:      "tm-bench",
-		Method:  "broadcast_tx_commit",
+		Method:  "broadcast_tx_commit_trans",
 		Params:  rawParamsJSON,
 	}
+	fmt.Println("sender:",rc.Sender)
 	json.NewEncoder(requestBody).Encode(rc)
-	url := "http://" + ip
+	url := string(e.Query(Receiver))
 	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
@@ -413,22 +424,26 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *
 	if err != nil {
 		panic(err)
 	}
-	response, _ := client.Do(req)
+	response, err := client.Do(req)
+	if(err!=nil){
+		fmt.Println(err)
+	}
 	body, _ := ioutil.ReadAll(response.Body)
 	var f interface{}
-	jserror := json.Unmarshal(body, &f)
+	jserror:= json.Unmarshal(body, &f)
 	if jserror != nil {
 		fmt.Println(jserror)
 	}
 	m := f.(map[string]interface{})
 	for k, v := range m {
-		if k == "error" {
+		if (k=="error"){
 			md, _ := v.(map[string]interface{})
-			if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
+			if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
 				blockExec.RemoveFromRelaytxDB(tx)
 			}
 		}
 	}
+
 
 }
 

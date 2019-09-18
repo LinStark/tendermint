@@ -50,9 +50,13 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
+	Sender  string  		`json:"Sender"` //添加发送者
+	Receiver string         `json:"Receiver"` //添加接受者
+	Flag int                `json:"Flag"`
 	ID      jsonrpcid       `json:"id"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+
 }
 
 // UnmarshalJSON custom JSON unmarshalling due to jsonrpcid being string or int
@@ -60,6 +64,9 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	unsafeReq := &struct {
 		JSONRPC string          `json:"jsonrpc"`
 		ID      interface{}     `json:"id"`
+		Sender  string  		`json:"Sender"` //添加发送者
+		Receiver string         `json:"Receiver"` //添加接受者
+		Flag int                `json:"Flag"`
 		Method  string          `json:"method"`
 		Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 	}{}
@@ -70,6 +77,8 @@ func (request *RPCRequest) UnmarshalJSON(data []byte) error {
 	request.JSONRPC = unsafeReq.JSONRPC
 	request.Method = unsafeReq.Method
 	request.Params = unsafeReq.Params
+	request.Sender=unsafeReq.Sender
+	request.Receiver=unsafeReq.Receiver
 	if unsafeReq.ID == nil {
 		return nil
 	}
@@ -148,6 +157,7 @@ func (err RPCError) Error() string {
 type RPCResponse struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      jsonrpcid       `json:"id"`
+	Content string          `json:"content"`
 	Result  json.RawMessage `json:"result,omitempty"`
 	Error   *RPCError       `json:"error,omitempty"`
 }

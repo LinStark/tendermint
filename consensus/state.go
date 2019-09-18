@@ -88,6 +88,7 @@ type RPCRequest struct {
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
+
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
 // commits blocks to the chain and executes them against the application.
@@ -931,9 +932,7 @@ func (cs *ConsensusState) isProposer(address []byte) bool {
 func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
-		e := useetcd.Use_Etcd{
-			//Endpoints: []string{"192.168.5.56:2379"},
-		}
+		e := useetcd.NewEtcd()
 		e.Update(getShard(), getPort())
 	}
 }
@@ -1405,8 +1404,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	if !cs.isEqual(lastLeaderAddress) {
 		if cs.isLeader() {
-			//e := useetcd.NewEtcd()
-			//e.Update(getShard(), getPort())
+			e := useetcd.NewEtcd()
+			e.Update(getShard(), getPort())
 			fmt.Println("------change the leader--------")
 			cs.reactorViaCheckpoint(height)
 		}

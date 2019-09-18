@@ -77,7 +77,7 @@ func (e Use_Etcd)Update(key string,value string){
 }
 func NewEtcd()(*Use_Etcd){
 	return &Use_Etcd{
-		Endpoints: []string{"192.168.5.56:2379"},
+		Endpoints: []string{"192.168.5.56:2379","192.168.5.57:2379","192.168.5.58:2379"},
 	}
 }
 
