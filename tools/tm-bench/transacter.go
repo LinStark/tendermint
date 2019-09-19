@@ -121,7 +121,7 @@ func (t *transacter) receiveLoop(connIndex int) {
 	c := t.conns[connIndex]
 	defer t.endingWg.Done()
 	for {
-		_, _, err := c.ReadMessage()
+		_, p, err := c.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				t.logger.Error(
@@ -132,6 +132,7 @@ func (t *transacter) receiveLoop(connIndex int) {
 			}
 			return
 		}
+		fmt.Println("返回结果：",string(p))
 		if t.stopped || t.connsBroken[connIndex] {
 			return
 		}
@@ -205,7 +206,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				//update tx number of the tx, and the corresponding hex
 				//updateTx(tx, txHex, txNumber,send_shard,t.shard)
 				ntx:=updateTx( txNumber,send_shard,t.shard)
-				fmt.Println(string(ntx))
+				//fmt.Println(string(ntx))
 				
 				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": ntx})
 			       

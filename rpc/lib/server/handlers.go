@@ -24,6 +24,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	line "github.com/tendermint/tendermint/line"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
@@ -689,7 +690,20 @@ func (wsc *wsConnection) readRoutine() {
 	wsc.baseConn.SetPongHandler(func(m string) error {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
 	})
+	//建立连接
+	type node struct{
+		target map[string] []string
+	}
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	}
 
+	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+
+	l:=line.NewLine(endpoints.target)
 	for {
 		select {
 		case <-wsc.Quit():
@@ -725,13 +739,53 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 			fmt.Println("传过来的method：", request.Method)
-			//if(request.Method=="broadcast_tx_commit_relay"){
-			//	tx :=types.RPCRequest{
-			//		JSONRPC: "2.0",
-			//		ID:      types.JSONRPCStringID("relay"),
-			//		Method:"broadcast_tx_commit",
-			//		Params:  request.Params,
-			//	}
+			if(request.Method=="broadcast_tx_commit_trans") {
+				tx := types.RPCRequest{
+					JSONRPC: "2.0",
+					Sender:  request.Sender,
+					Receiver: request.Receiver,
+					ID:      types.JSONRPCStringID("trans"),
+					Method:  "broadcast_tx_commit",
+					Params:  request.Params,
+				}
+
+				if err:=l.SendMessage(tx,request.Receiver);err!=nil{
+					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+					continue
+				}
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
+			}else{
+				rpcFunc := wsc.funcMap[request.Method]
+				if rpcFunc == nil {
+					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+					continue
+				}
+
+				ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+				args := []reflect.Value{reflect.ValueOf(ctx)}
+				if len(request.Params) > 0 {
+					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+					if err != nil {
+						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+						continue
+					}
+					args = append(args, fnArgs...)
+				}
+
+				returns := rpcFunc.f.Call(args)
+
+				// TODO: Need to encode args/returns to string if we want to log them
+				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
+				result, err := unreflectResult(returns)
+				if err != nil {
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+					continue
+				}
+
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+				//}
+			}
 			//	fmt.Println("request.params")
 			//	fmt.Println(request.Params)
 			//	defaultShardIp:=Get(request.Receiver)
@@ -744,36 +798,7 @@ func (wsc *wsConnection) readRoutine() {
 			//	return
 			//}else{
 			// Now, fetch the RPCFunc and execute it.
-			rpcFunc := wsc.funcMap[request.Method]
-			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-				continue
-			}
 
-			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
-				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
-					continue
-				}
-				args = append(args, fnArgs...)
-			}
-
-			returns := rpcFunc.f.Call(args)
-
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
-			result, err := unreflectResult(returns)
-			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
-				continue
-			}
-
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
-			//}
 
 		}
 	}
