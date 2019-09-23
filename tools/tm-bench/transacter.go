@@ -2,12 +2,12 @@ package main
 
 import (
 	"crypto/sha256"
-//	"encoding/binary"
-//	"encoding/hex"
+	//	"encoding/binary"
+	//	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 
 	// it is ok to use math/rand here: we do not need a cryptographically secure random
 	// number generator here and we can run the tests a bit faster
@@ -30,15 +30,15 @@ const (
 	sendTimeout = 10 * time.Second
 	// see https://github.com/tendermint/tendermint/blob/master/rpc/lib/server/handlers.go
 	pingPeriod = (30 * 9 / 10) * time.Second
-	
 )
-type TX struct{
-	Txtype string
-	Sender string
+
+type TX struct {
+	Txtype   string
+	Sender   string
 	Receiver string
 	ID       [sha256.Size]byte
-	Content []string
-} 
+	Content  []string
+}
 
 type transacter struct {
 	Target            string
@@ -58,7 +58,7 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections, rate int, size int,shard string,allshard string, broadcastTxMethod string) *transacter {
+func newTransacter(target string, connections, rate int, size int, shard string, allshard string, broadcastTxMethod string) *transacter {
 	return &transacter{
 		Target:            target,
 		Rate:              rate,
@@ -99,7 +99,6 @@ func (t *transacter) Start() error {
 		go t.sendLoop(i)
 		go t.receiveLoop(i)
 	}
-
 
 	t.startingWg.Wait()
 
@@ -180,13 +179,13 @@ func (t *transacter) sendLoop(connIndex int) {
 	//hostnameHash = sha256.Sum256([]byte(hostname))
 	// each transaction embeds connection index, tx number and hash of the hostname
 	// we update the tx number between successive txs
-	
+
 	//tx := generateTx(connIndex, txNumber, t.Size, hostnameHash)
 	//tx := generateTx(connIndex, txNumber, t.Size, hostnameHash,t.shard)
 	//txHex := make([]byte, len(tx)*2)
 	//hex.Encode(txHex, tx)
-	allShard:=strings.Split(t.allshard,",")
-	send_shard:=deleteSlice(allShard,t.shard)
+	allShard := strings.Split(t.allshard, ",")
+	send_shard := deleteSlice(allShard, t.shard)
 
 	for {
 		select {
@@ -201,14 +200,12 @@ func (t *transacter) sendLoop(connIndex int) {
 
 			now := time.Now()
 			//rate是每秒发送消息的数量
-			for i := 0; i < t.Rate; i++ { 
+			for i := 0; i < t.Rate; i++ {
 				//update tx number of the tx, and the corresponding hex
 				//updateTx(tx, txHex, txNumber,send_shard,t.shard)
-				ntx:=updateTx( txNumber,send_shard,t.shard)
-				fmt.Println(string(ntx))
-				
+				ntx := updateTx(txNumber, send_shard, t.shard)
 				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": ntx})
-			       
+
 				if err != nil {
 					fmt.Printf("failed to encode params: %v\n", err)
 					os.Exit(1)
@@ -229,33 +226,33 @@ func (t *transacter) sendLoop(connIndex int) {
 					logger.Error(err.Error())
 					return
 				}
-/*
-			if(i%2==0){
-				atx:=sendaddtx(ntx)
+				/*
+							if(i%2==0){
+								atx:=sendaddtx(ntx)
 
-				paramsJSON, err = json.Marshal(map[string]interface{}{"tx": atx})
-			       
-				if err != nil {
-					fmt.Printf("failed to encode params: %v\n", err)
-					os.Exit(1)
-				}
-				rawParamsJSON = json.RawMessage(paramsJSON)
+								paramsJSON, err = json.Marshal(map[string]interface{}{"tx": atx})
 
-				c.SetWriteDeadline(now.Add(sendTimeout))
-				err = c.WriteJSON(rpctypes.RPCRequest{
-					JSONRPC: "2.0",
-					ID:      rpctypes.JSONRPCStringID("tm-bench"),
-					Method:  t.BroadcastTxMethod,
-					Params:  rawParamsJSON,
-				})
-				if err != nil {
-					err = errors.Wrap(err,
-						fmt.Sprintf("txs send failed on connection #%d", connIndex))
-					t.connsBroken[connIndex] = true
-					logger.Error(err.Error())
-					return
-				}
-}*/
+								if err != nil {
+									fmt.Printf("failed to encode params: %v\n", err)
+									os.Exit(1)
+								}
+								rawParamsJSON = json.RawMessage(paramsJSON)
+
+								c.SetWriteDeadline(now.Add(sendTimeout))
+								err = c.WriteJSON(rpctypes.RPCRequest{
+									JSONRPC: "2.0",
+									ID:      rpctypes.JSONRPCStringID("tm-bench"),
+									Method:  t.BroadcastTxMethod,
+									Params:  rawParamsJSON,
+								})
+								if err != nil {
+									err = errors.Wrap(err,
+										fmt.Sprintf("txs send failed on connection #%d", connIndex))
+									t.connsBroken[connIndex] = true
+									logger.Error(err.Error())
+									return
+								}
+				}*/
 				// cache the time.Now() reads to save time.
 				if i%5 == 0 {
 					now = time.Now()
@@ -309,6 +306,7 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
+
 /*
 func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte) []byte {
 	t := time.Now()
@@ -351,62 +349,61 @@ func updateTx(tx []byte, txHex []byte, txNumber int,send_shard []string,shard st
 
 
 */
-func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte,shard string) []byte {
+func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte, shard string) []byte {
 
 	t := time.Now()
 	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	content:=shard+strconv.Itoa(txNumber)+timestamp
-	tx :=&TX{
-		Txtype:"tx",
-		Sender: "", 
+	content := shard + strconv.Itoa(txNumber) + timestamp
+	tx := &TX{
+		Txtype:   "tx",
+		Sender:   "",
 		Receiver: "",
-		ID      : sha256.Sum256([]byte(content)),
-		Content :[]string{content}} 
-        res, _ := json.Marshal(tx)
+		ID:       sha256.Sum256([]byte(content)),
+		Content:  []string{content}}
+	res, _ := json.Marshal(tx)
 	restx := make([]byte, txSize)
-	txLength:=len(res)
+	txLength := len(res)
 	copy(restx[:txLength], res)
 
 	return restx
 }
 
 // warning, mutates input byte slice
-func updateTx(txNumber int,send_shard []string,shard string)[]byte {
+func updateTx(txNumber int, send_shard []string, shard string) []byte {
 
 	t := time.Now()
 	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	content:=shard+strconv.Itoa(txNumber)+timestamp
+	content := shard + strconv.Itoa(txNumber) + timestamp
 	var res []byte
-	if(txNumber%2==0){
-		step:=len(send_shard)
-		tx :=&TX{
-			Txtype:"relaytx",
-			Sender: shard, 
+	if txNumber%2 == 0 {
+		step := len(send_shard)
+		tx := &TX{
+			Txtype:   "relaytx",
+			Sender:   shard,
 			Receiver: send_shard[txNumber%step],
-			ID      : sha256.Sum256([]byte(content)),
-			Content :[]string{content}} 
-       		res, _  = json.Marshal(tx)		
-	}else{
-		tx :=&TX{
-			Txtype:"tx",
-			Sender: "", 
+			ID:       sha256.Sum256([]byte(content)),
+			Content:  []string{content}}
+		res, _ = json.Marshal(tx)
+	} else {
+		tx := &TX{
+			Txtype:   "tx",
+			Sender:   "",
 			Receiver: "",
-			ID      : sha256.Sum256([]byte(content)),
-			Content :[]string{content}} 
-       		res, _  = json.Marshal(tx)
+			ID:       sha256.Sum256([]byte(content)),
+			Content:  []string{content}}
+		res, _ = json.Marshal(tx)
 	}
-	fmt.Println("the length is ",len(res))
 	return res
 
 }
-func sendaddtx(tx []byte) []byte{
+func sendaddtx(tx []byte) []byte {
 	var t TX
-	json.Unmarshal(tx, &t) 
-	t.Txtype="addtx"
-       	res, _  := json.Marshal(t)
+	json.Unmarshal(tx, &t)
+	t.Txtype = "addtx"
+	res, _ := json.Marshal(t)
 	return res
 }
-func deleteSlice(a []string,alp string) []string {
+func deleteSlice(a []string, alp string) []string {
 	ret := make([]string, 0, len(a))
 	for _, val := range a {
 		if val != alp {

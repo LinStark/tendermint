@@ -19,8 +19,8 @@ var logger = log.NewNopLogger()
 
 func main() {
 	var durationInt, txsRate, connections, txSize int
-	var verbose  bool
-	var outputFormat, shard,broadcastTxMethod,allshard string
+	var verbose bool
+	var outputFormat, shard, broadcastTxMethod, allshard string
 
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
@@ -29,7 +29,7 @@ func main() {
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flagSet.StringVar(&shard, "shard", "A", "shard of tendermint")
-	
+
 	flagSet.StringVar(&allshard, "as", "A,B,C,D", "shard of tendermint")
 	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flagSet.BoolVar(&verbose, "v", false, "Verbose output")
@@ -166,9 +166,10 @@ func startTransacters(
 	transacters := make([]*transacter, len(endpoints))
 
 	wg := sync.WaitGroup{}
+
 	wg.Add(len(endpoints))
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate, txSize,shard,allshard,broadcastTxMethod)
+		t := newTransacter(e, connections, txsRate, txSize, shard, allshard, broadcastTxMethod)
 		t.SetLogger(logger)
 		go func(i int) {
 			defer wg.Done()

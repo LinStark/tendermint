@@ -313,7 +313,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
 	//将需要跨片的交易按分片归类
 	for i := 0; i < len(txs); i++ {
 		flag := int(txs[i].Receiver[0]) - 65
-		txs[i].Txtype = "addTx"
+		txs[i].Txtype = "addtx"
 		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	client := &http.Client{}
@@ -339,7 +339,7 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX, flag int, client *http.Client)
 		Endpoints: []string{"192.168.5.56:2379"},
 	}
 	fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
-	if tx.Txtype == "addTx" {
+	if tx.Txtype == "addtx" {
 		SiteIp = string(e.Query(tx.Sender))
 	} else {
 		SiteIp = string(e.Query(tx.Receiver))
@@ -381,6 +381,7 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 
 }
 */
+
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      string          `json:"id"`

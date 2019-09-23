@@ -913,7 +913,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if height == 1 {
 		//如果高度为1并且是leader，则需要向etcd中更新地址
-		//cs.sendLeaderToEtcd(address)
+		cs.sendLeaderToEtcd(address)
 	}
 	if cs.isProposer(address) {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
@@ -932,7 +932,7 @@ func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
 		e := useetcd.Use_Etcd{
-			//Endpoints: []string{"192.168.5.56:2379"},
+			Endpoints: []string{"192.168.5.56:2379"},
 		}
 		e.Update(getShard(), getPort())
 	}
@@ -1405,8 +1405,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	if !cs.isEqual(lastLeaderAddress) {
 		if cs.isLeader() {
-			//e := useetcd.NewEtcd()
-			//e.Update(getShard(), getPort())
+			e := useetcd.NewEtcd()
+			e.Update(getShard(), getPort())
 			fmt.Println("------change the leader--------")
 			cs.reactorViaCheckpoint(height)
 		}
