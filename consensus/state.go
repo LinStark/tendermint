@@ -36,6 +36,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
+	myline "github.com/tendermint/tendermint/line"
 )
 
 //-----------------------------------------------------------------------------
@@ -94,6 +95,7 @@ type RPCRequest struct {
 // The internal state machine receives input from peers, the internal validator, and from a timer.
 type ConsensusState struct {
 	cmn.BaseService
+	my myline.Line
 
 	// config details
 	config        *cfg.ConsensusConfig
@@ -154,6 +156,24 @@ type ConsensusState struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+}
+type node struct{
+	target map[string] []string
+ }
+ 
+func (cs *ConsensusState) newline() *myline.Line{
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	 }
+	 
+	 endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	 endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	 endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	 endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+	 
+	 l:=myline.NewLine(endpoints.target)
+	 return l 
 }
 
 // StateOption sets an optional parameter on the ConsensusState.
@@ -323,7 +343,7 @@ func (cs *ConsensusState) OnStart() error {
 	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
 	}
-
+	cs.newline()
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
 	if cs.doWALCatchup {

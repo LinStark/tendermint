@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-	line "github.com/tendermint/tendermint/line"
 )
 
 //-----------------------------------------------------------------------------
@@ -381,23 +380,24 @@ func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
 }
 */
 type RPCRequest struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      string           `json:"id"`
-	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
-	Sender string  		    `json:"Sender"` //添加发送者
-	Receiver string         `json:"Receiver"` //添加接受者
-	Flag int				 `json:"Flag"`
+	JSONRPC  string          `json:"jsonrpc"`
+	ID       string          `json:"id"`
+	Method   string          `json:"method"`
+	Params   json.RawMessage `json:"params"`   // must be map[string]interface{} or []interface{}
+	Sender   string          `json:"Sender"`   //添加发送者
+	Receiver string          `json:"Receiver"` //添加接受者
+	Flag     int             `json:"Flag"`
 }
-func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *http.Client){
+
+func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *http.Client) {
 	//port:=[]string{"26657","36657","46657"}
 	//e := useetcd.NewEtcd()
-	if tx.Txtype=="addtx"{
+	if tx.Txtype == "addtx" {
 		fmt.Println("现在我要发送addtx出去")
 	}
-	Sender:=tx.Sender
-	Receiver:=tx.Receiver
-	fmt.Println("receiver:",Receiver)
+	Sender := tx.Sender
+	Receiver := tx.Receiver
+	fmt.Println("receiver:", Receiver)
 	res, _ := json.Marshal(tx)
 	requestBody := new(bytes.Buffer)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
@@ -406,19 +406,19 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 		os.Exit(1)
 	}
 	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc:=&RPCRequest{
-		JSONRPC: "2.0",
-		Sender:  Sender,
+	rc := &RPCRequest{
+		JSONRPC:  "2.0",
+		Sender:   Sender,
 		Receiver: Receiver,
-		Flag:flag,
-		ID:      "tm-bench",
-		Method:  "broadcast_tx_commit_trans",
-		Params:  rawParamsJSON,
+		Flag:     flag,
+		ID:       "tm-bench",
+		Method:   "broadcast_tx_commit_trans",
+		Params:   rawParamsJSON,
 	}
-	fmt.Println("sender:",rc.Sender)
-	fmt.Println("发送的方法:",rc.Method)
+	fmt.Println("sender:", rc.Sender)
+	fmt.Println("发送的方法:", rc.Method)
 	json.NewEncoder(requestBody).Encode(rc)
-	url := "http://"+ip
+	url := "http://" + ip
 	fmt.Println(url)
 	req, err := http.NewRequest("POST", url, requestBody)
 	req.Header.Set("Content-Type", "application/json")
@@ -427,25 +427,24 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX,ip string,flag int,client *htt
 		panic(err)
 	}
 	response, err := client.Do(req)
-	if(err!=nil){
+	if err != nil {
 		fmt.Println(err)
 	}
 	body, _ := ioutil.ReadAll(response.Body)
 	var f interface{}
-	jserror:= json.Unmarshal(body, &f)
+	jserror := json.Unmarshal(body, &f)
 	if jserror != nil {
 		fmt.Println(jserror)
 	}
 	m := f.(map[string]interface{})
 	for k, v := range m {
-		if (k=="error"){
+		if k == "error" {
 			md, _ := v.(map[string]interface{})
-			if(md["data"]=="Error on broadcastTxCommit: Tx already exists in cache"){
+			if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
 				blockExec.RemoveFromRelaytxDB(tx)
 			}
 		}
 	}
-
 
 }
 
