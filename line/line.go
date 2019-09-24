@@ -56,6 +56,20 @@ func (l *line) SendMessage(message rpctypes.RPCRequest,key string) error {
 	}
 	return nil
 }
-//func (l *line) ReceiveMessage(key string)error{
-//
-//}
+func (l *line) ReceiveMessage(key string,connindex int)error{
+	c:=l.conns[key][connindex]
+	for {
+		//第二个下划线指的是返回的信息，在下一步进行使用
+		_, _, err := c.ReadMessage()
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				return err
+			}
+			return nil
+		}
+
+		//if t.stopped || t.connsBroken[connIndex] {
+		//	return
+		//}
+	}
+}

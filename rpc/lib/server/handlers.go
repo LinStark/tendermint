@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -24,7 +25,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	line "github.com/tendermint/tendermint/line"
+	//line "github.com/tendermint/tendermint/line"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
@@ -444,9 +445,76 @@ const (
 // connection, and the event switch for subscribing to events.
 //
 // In case of an error, the connection is stopped.
+
+type line struct {
+	target map[string] []string
+	conns map[string][]*websocket.Conn
+}
+//连接函数
+func (l *line)connect(host string) (*websocket.Conn, *http.Response, error) {
+	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
+	return websocket.DefaultDialer.Dial(u.String(), nil)
+}
+//产生新的连接类型
+func NewLine(target map[string] []string) *line {
+	//sum是算整体网络的节点个数，为了开辟相当的空间
+	var sum int
+	sum=0
+	for shard :=range target{
+		sum+=len(target[shard])
+	}
+	return &line{
+		target: target,//目标节点地址
+		conns: make(map[string][]*websocket.Conn,sum),//连接地址
+	}
+}
+//建立连接数组
+func (l *line) start() error {
+	for shard :=range l.target{
+		fmt.Println(shard)
+		for i,ip :=range l.target[shard]{
+			c,_,err:=l.connect(ip)
+			if err != nil {
+				return err
+			}
+			l.conns[shard][i]=c
+		}
+	}
+	return nil
+}
+//发送消息，随机取一个连接给目标节点发送信息
+func (l *line) SendMessage(message types.RPCRequest,key string) error {
+	rand.Seed(time.Now().Unix())
+	rnd := rand.Intn(4)
+	c := l.conns[key][rnd]
+	err := c.WriteJSON(message)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (l *line) ReceiveMessage(key string,connindex int)error{
+	c:=l.conns[key][connindex]
+	for {
+		//第二个下划线指的是返回的信息，在下一步进行使用
+		_, _, err := c.ReadMessage()
+		if err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+				return err
+			}
+			return nil
+		}
+
+		//if t.stopped || t.connsBroken[connIndex] {
+		//	return
+		//}
+	}
+}
+
 type wsConnection struct {
 	cmn.BaseService
 
+	wsline *line
 	remoteAddr string
 	baseConn   *websocket.Conn
 	writeChan  chan types.RPCResponse
@@ -481,13 +549,16 @@ type wsConnection struct {
 // disconnect. see https://github.com/gorilla/websocket/issues/97
 func NewWSConnection(
 	baseConn *websocket.Conn,
+	wsline *line,
 	funcMap map[string]*RPCFunc,
 	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
 	baseConn.SetReadLimit(maxBodyBytes)
+
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
+		wsline:            wsline,
 		baseConn:          baseConn,
 		funcMap:           funcMap,
 		cdc:               cdc,
@@ -691,19 +762,7 @@ func (wsc *wsConnection) readRoutine() {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
 	})
 	//建立连接
-	type node struct{
-		target map[string] []string
-	}
-	endpoints:=&node{
-		target:make(map[string][]string,16),
-	}
-
-	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
-	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
-	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
-	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
-
-	l:=line.NewLine(endpoints.target)
+	wsc.wsline.start()
 	for {
 		select {
 		case <-wsc.Quit():
@@ -739,7 +798,7 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 			fmt.Println("传过来的method：", request.Method)
-			if(request.Method=="broadcast_tx_commit_trans") {
+			if(request.Method=="broadcast_tx_commit") {
 				tx := types.RPCRequest{
 					JSONRPC: "2.0",
 					Sender:  request.Sender,
@@ -909,9 +968,22 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to upgrade to websocket connection", "err", err)
 		return
 	}
+	type node struct{
+		target map[string] []string
+	}
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	}
 
+	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+
+
+	wsline:=NewLine(endpoints.target)
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := NewWSConnection(wsConn, wsline,wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // Blocking

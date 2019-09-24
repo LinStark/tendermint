@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
 	line "github.com/tendermint/tendermint/line"
+
 )
 
 //-----------------------------------------------------------------------------

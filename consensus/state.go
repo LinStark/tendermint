@@ -36,6 +36,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
+	myline "github.com/tendermint/tendermint/line"
 )
 
 //-----------------------------------------------------------------------------
@@ -94,8 +95,8 @@ type RPCRequest struct {
 // The internal state machine receives input from peers, the internal validator, and from a timer.
 type ConsensusState struct {
 	cmn.BaseService
-
 	// config details
+
 	config        *cfg.ConsensusConfig
 	privValidator types.PrivValidator // for signing votes
 
@@ -302,7 +303,7 @@ func (cs *ConsensusState) OnStart() error {
 	if err := cs.evsw.Start(); err != nil {
 		return err
 	}
-
+	line.NewLine()
 	// we may set the WAL in testing before calling Start,
 	// so only OpenWAL if its still the nilWAL
 	if _, ok := cs.wal.(nilWAL); ok {
