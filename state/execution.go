@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -19,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
 
-	//line "github.com/tendermint/tendermint/line"
+	myline "github.com/tendermint/tendermint/line"
 
 )
 
@@ -120,7 +121,7 @@ func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) e
 // It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
-func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, block *types.Block, flag bool) (State, error) {
+func (blockExec *BlockExecutor) ApplyBlock(/*line *myline.Line,*/state State, blockID types.BlockID, block *types.Block, flag bool) (State, error) {
 
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, ErrInvalidBlock(err)
@@ -190,7 +191,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 //------------------------------------------------------
 //检查是否有跨链交易产生，对其进行后续处理
-func (blockExec *BlockExecutor) CheckRelayTxs(block *types.Block) {
+func (blockExec *BlockExecutor) CheckRelayTxs(/*line *myline.Line,*/block *types.Block) {
 
 	fmt.Println("-------------Begin check Relay Txsc----------")
 	resendTxs := blockExec.UpdateRelaytxDB() //检查状态数据库，没有及时确认的relayTxs需要重新发送relaytxs
@@ -285,7 +286,7 @@ func (blockExec *BlockExecutor) GetAllTxs() []tp.TX {
 	return cpTxs
 }
 
-func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX) {
+func (blockExec *BlockExecutor) SendRelayTxs(/*line *myline.Line,*/txs []tp.TX) {
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
 	var shard_send [4][]tp.TX
@@ -308,7 +309,7 @@ func (blockExec *BlockExecutor) SendRelayTxs(txs []tp.TX) {
 	}
 }
 
-func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
+func (blockExec *BlockExecutor) SendAddedRelayTxs(/*line *myline.Line,*/txs []tp.TX) {
 	//向发送来的分片中返回确认消息
 	fmt.Println("SendAddedRelayTxs")
 	//暂时定义分片有4个
@@ -336,16 +337,17 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(txs []tp.TX) {
 //---------------------------------------------------------------------------
 //ETCD
 
-func (blockExec *BlockExecutor) Sendtxs(tx tp.TX, flag int, client *http.Client) {
+func (blockExec *BlockExecutor) Sendtxs(/*line *myline.Line,*/tx tp.TX, flag int, client *http.Client) {
 	SiteIp := ""
 	e := useetcd.NewEtcd()
-	fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
+	//fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
 	if tx.Txtype == "addtx" {
 		SiteIp = string(e.Query(tx.Sender))
 	} else {
 		SiteIp = string(e.Query(tx.Receiver))
 	}
-	fmt.Println(SiteIp)
+	//line.Test()
+	//fmt.Println(SiteIp)
 	blockExec.Send2TEN(tx, SiteIp, flag, client)
 }
 
@@ -392,7 +394,7 @@ type RPCRequest struct {
 	Flag     int             `json:"Flag"`
 }
 
-func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *http.Client) {
+func (blockExec *BlockExecutor) Send2TEN(/*line *myline.Line,*/tx tp.TX, ip string, flag int, client *http.Client) {
 	//port:=[]string{"26657","36657","46657"}
 	//e := useetcd.NewEtcd()
 	if tx.Txtype == "addtx" {
@@ -409,15 +411,15 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *
 		os.Exit(1)
 	}
 	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc := &RPCRequest{
+	rc := &rpctypes.RPCRequest{
 		JSONRPC:  "2.0",
 		Sender:   Sender,
 		Receiver: Receiver,
 		Flag:     flag,
-		ID:       "tm-bench",
-		Method:   "broadcast_tx_commit_trans",
+		Method:   "broadcast_tx_commit",
 		Params:   rawParamsJSON,
 	}
+	//line.SendMessage(rc,Receiver)
 	fmt.Println("sender:", rc.Sender)
 	fmt.Println("发送的方法:", rc.Method)
 	json.NewEncoder(requestBody).Encode(rc)
@@ -448,6 +450,26 @@ func (blockExec *BlockExecutor) Send2TEN(tx tp.TX, ip string, flag int, client *
 			}
 		}
 	}
+
+}
+func (blockExec *BlockExecutor) Send3TEN(line *myline.Line,tx tp.TX, ip string, flag int, client *http.Client) {
+	//port:=[]string{"26657","36657","46657"}
+	//e := useetcd.NewEtcd()
+	if tx.Txtype == "addtx" {
+		fmt.Println("现在我要发送addtx出去")
+	}
+
+	Sender := tx.Sender
+	Receiver := tx.Receiver
+	fmt.Println("receiver:", Receiver)
+	res, _ := json.Marshal(tx)
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	rawParamsJSON := json.RawMessage(paramsJSON)
+	line.SendMessageTrans(rawParamsJSON,Receiver,Sender)
 
 }
 

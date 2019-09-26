@@ -32,11 +32,11 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	myline "github.com/tendermint/tendermint/line"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-	myline "github.com/tendermint/tendermint/line"
 )
 
 //-----------------------------------------------------------------------------
@@ -211,6 +211,13 @@ func NewConsensusState(
 	cs.setProposal = cs.defaultSetProposal
 
 	cs.updateToState(state)
+	cs.my=cs.newline()
+	//go func(){
+	//	if err:=cs.my.Start();err!=nil{
+	//		fmt.Println(err)
+	//	}
+	//	fmt.Println("state connect!!!!!!!!!!!!!!!!")
+	//}()
 
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
@@ -322,6 +329,7 @@ func (cs *ConsensusState) OnStart() error {
 	if err := cs.evsw.Start(); err != nil {
 		return err
 	}
+	fmt.Println("Consensus在这里启动了")
 	// we may set the WAL in testing before calling Start,
 	// so only OpenWAL if its still the nilWAL
 	if _, ok := cs.wal.(nilWAL); ok {
@@ -342,7 +350,8 @@ func (cs *ConsensusState) OnStart() error {
 	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
 	}
-	cs.newline()
+
+
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
 	if cs.doWALCatchup {
@@ -376,7 +385,11 @@ go run scripts/json2wal/main.go wal.json $WALFILE # rebuild the file without cor
 	// schedule the first round!
 	// use GetRoundState so we don't race the receiveRoutine for access
 	cs.scheduleRound0(cs.GetRoundState())
-
+	//if err:=cs.my.Start();err!=nil{
+	//	fmt.Println("启动失败-cs")
+	//	return err
+	//}
+	//fmt.Println("state 连接！！！！！！！！！！！！！！！！！")
 	return nil
 
 }
@@ -1477,6 +1490,7 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []tp.TX {
 
 				data := tblock.Data.Txs[i]
 				//遍历每个tblock中的TX
+
 				encodeStr := hex.EncodeToString(data)
 				temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
 

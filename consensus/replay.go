@@ -17,6 +17,7 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 
+	myline "github.com/tendermint/tendermint/line"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -197,6 +198,7 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 
 type Handshaker struct {
 	stateDB      dbm.DB
+	line         *myline.Line
 	initialState sm.State
 	store        sm.BlockStore
 	eventBus     types.BlockEventPublisher
@@ -205,11 +207,24 @@ type Handshaker struct {
 
 	nBlocks int // number of blocks applied to the state
 }
+func (h *Handshaker) newline2() *myline.Line{
 
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	}
+
+	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+
+	l:=myline.NewLine(endpoints.target)
+	return l
+}
 func NewHandshaker(stateDB dbm.DB, state sm.State,
 	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
-	return &Handshaker{
+	h:=&Handshaker{
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
@@ -218,6 +233,9 @@ func NewHandshaker(stateDB dbm.DB, state sm.State,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
 	}
+	h.line=h.newline2()
+
+	return h
 }
 
 func (h *Handshaker) SetLogger(l log.Logger) {
@@ -424,7 +442,6 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 
 		h.nBlocks++
 	}
-
 	if mutateState {
 		// sync the final block
 		state, err = h.replayBlock(state, storeBlockHeight, proxyApp.Consensus())
@@ -446,6 +463,12 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	blockExec.SetEventBus(h.eventBus)
 
 	var err error
+	//go func(){
+	//	if err:=h.line.Start();err!=nil{
+	//		fmt.Println(err)
+	//	}
+	//	fmt.Println("replay connect!!!!!!!!!!!!!!!!")
+	//}()
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block,false)
 	if err != nil {
 		return sm.State{}, err

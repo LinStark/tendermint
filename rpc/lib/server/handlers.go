@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -21,11 +19,11 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	myline "github.com/tendermint/tendermint/line"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	//line "github.com/tendermint/tendermint/line"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
@@ -137,26 +135,26 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 		//入口
-		if request.Method == "broadcast_tx_commit_trans" {
-			fmt.Printf("leader接到跨片交易信息,准备跨片")
-			tx := types.RPCRequest{
-				JSONRPC: "2.0",
-				ID:      types.JSONRPCStringID("trans"),
-				Method:  "broadcast_tx_commit",
-				Params:  request.Params,
-			}
-			rand.Seed(time.Now().Unix())
-			rnd := rand.Intn(4)
-			fmt.Println("request.receiver:", request.Receiver)
-			defaultShardIp := Get(request.Receiver)
-			port := []string{"26657", "36657", "46657", "56657"}
-			defaultShardIp = "http://" + defaultShardIp + ":" + port[rnd]
-			Send2TEN2(defaultShardIp, tx)
-			fmt.Println("接收到的方法：", request.Method)
-			fmt.Println("leader要发送给分片的ip：", defaultShardIp)
-			WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID, Content: "Success"})
-			return
-		} else {
+		//if request.Method == "broadcast_tx_commit_trans" {
+		//	fmt.Printf("leader接到跨片交易信息,准备跨片")
+		//	tx := types.RPCRequest{
+		//		JSONRPC: "2.0",
+		//		ID:      types.JSONRPCStringID("trans"),
+		//		Method:  "broadcast_tx_commit",
+		//		Params:  request.Params,
+		//	}
+		//	rand.Seed(time.Now().Unix())
+		//	rnd := rand.Intn(4)
+		//	fmt.Println("request.receiver:", request.Receiver)
+		//	defaultShardIp := Get(request.Receiver)
+		//	port := []string{"26657", "36657", "46657", "56657"}
+		//	defaultShardIp = "http://" + defaultShardIp + ":" + port[rnd]
+		//	Send2TEN2(defaultShardIp, tx)
+		//	fmt.Println("接收到的方法：", request.Method)
+		//	fmt.Println("leader要发送给分片的ip：", defaultShardIp)
+		//	WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID, Content: "Success"})
+		//	return
+		//} else {
 			//Now, fetch the RPCFunc and execute it.
 			rpcFunc := funcMap[request.Method]
 			if rpcFunc == nil || rpcFunc.ws {
@@ -184,7 +182,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 				return
 			}
 			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
-		}
+		//}
 	}
 }
 
@@ -446,75 +444,10 @@ const (
 //
 // In case of an error, the connection is stopped.
 
-type line struct {
-	target map[string] []string
-	conns map[string][]*websocket.Conn
-}
-//连接函数
-func (l *line)connect(host string) (*websocket.Conn, *http.Response, error) {
-	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
-	return websocket.DefaultDialer.Dial(u.String(), nil)
-}
-//产生新的连接类型
-func NewLine(target map[string] []string) *line {
-	//sum是算整体网络的节点个数，为了开辟相当的空间
-	var sum int
-	sum=0
-	for shard :=range target{
-		sum+=len(target[shard])
-	}
-	return &line{
-		target: target,//目标节点地址
-		conns: make(map[string][]*websocket.Conn,sum),//连接地址
-	}
-}
-//建立连接数组
-func (l *line) start() error {
-	for shard :=range l.target{
-		fmt.Println(shard)
-		for i,ip :=range l.target[shard]{
-			c,_,err:=l.connect(ip)
-			if err != nil {
-				return err
-			}
-			l.conns[shard][i]=c
-		}
-	}
-	return nil
-}
-//发送消息，随机取一个连接给目标节点发送信息
-func (l *line) SendMessage(message types.RPCRequest,key string) error {
-	rand.Seed(time.Now().Unix())
-	rnd := rand.Intn(4)
-	c := l.conns[key][rnd]
-	err := c.WriteJSON(message)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (l *line) ReceiveMessage(key string,connindex int)error{
-	c:=l.conns[key][connindex]
-	for {
-		//第二个下划线指的是返回的信息，在下一步进行使用
-		_, _, err := c.ReadMessage()
-		if err != nil {
-			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				return err
-			}
-			return nil
-		}
-
-		//if t.stopped || t.connsBroken[connIndex] {
-		//	return
-		//}
-	}
-}
-
 type wsConnection struct {
 	cmn.BaseService
 
-	wsline *line
+	wsline *myline.Line
 	remoteAddr string
 	baseConn   *websocket.Conn
 	writeChan  chan types.RPCResponse
@@ -549,7 +482,7 @@ type wsConnection struct {
 // disconnect. see https://github.com/gorilla/websocket/issues/97
 func NewWSConnection(
 	baseConn *websocket.Conn,
-	wsline *line,
+	wsline *myline.Line,
 	funcMap map[string]*RPCFunc,
 	cdc *amino.Codec,
 	options ...func(*wsConnection),
@@ -570,6 +503,7 @@ func NewWSConnection(
 	for _, option := range options {
 		option(wsc)
 	}
+
 	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
@@ -762,7 +696,7 @@ func (wsc *wsConnection) readRoutine() {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
 	})
 	//建立连接
-	wsc.wsline.start()
+
 	for {
 		select {
 		case <-wsc.Quit():
@@ -797,23 +731,22 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 				continue
 			}
-			fmt.Println("传过来的method：", request.Method)
-			if(request.Method=="broadcast_tx_commit") {
-				tx := types.RPCRequest{
-					JSONRPC: "2.0",
-					Sender:  request.Sender,
-					Receiver: request.Receiver,
-					ID:      types.JSONRPCStringID("trans"),
-					Method:  "broadcast_tx_commit",
-					Params:  request.Params,
-				}
 
-				if err:=l.SendMessage(tx,request.Receiver);err!=nil{
-					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-					continue
-				}
-				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
-			}else{
+			//if(request.Method=="broadcast_tx_commit_trans") {
+			//	//tx := types.RPCRequest{
+			//	//	JSONRPC: "2.0",
+			//	//	Sender:  request.Sender,
+			//	//	Receiver: request.Receiver,
+			//	//	ID:      types.JSONRPCStringID("trans"),
+			//	//	Method:  "broadcast_tx_commit",
+			//	//	Params:  request.Params,
+			//	//}
+			//	if err:=wsc.wsline.SendMessageCommit(request.Params,request.Receiver,request.Sender);err!=nil{
+			//		wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+			//		continue
+			//	}
+			//	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
+			//}else{
 				rpcFunc := wsc.funcMap[request.Method]
 				if rpcFunc == nil {
 					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
@@ -844,7 +777,7 @@ func (wsc *wsConnection) readRoutine() {
 
 				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 				//}
-			}
+			//}if的终结点
 			//	fmt.Println("request.params")
 			//	fmt.Println(request.Params)
 			//	defaultShardIp:=Get(request.Receiver)
@@ -981,15 +914,17 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
 
 
-	wsline:=NewLine(endpoints.target)
+	wsline:=myline.NewLine(endpoints.target)
 	// register connection
 	con := NewWSConnection(wsConn, wsline,wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
+
 	err = con.Start() // Blocking
 	if err != nil {
 		wm.logger.Error("Error starting connection", "err", err)
 	}
+
 }
 
 // rpc.websocket

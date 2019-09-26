@@ -2,18 +2,44 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="Merge branch 'master' of https://github.com/LinStark/tendermint&#10;&#10;# Conflicts:&#10;#&#9;consensus/state.go&#10;#&#9;line/line.go&#10;#&#9;state/execution.go">
-      <change afterPath="$PROJECT_DIR$/build/tendermint" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/blockchain/reactor.go" beforeDir="false" afterPath="$PROJECT_DIR$/blockchain/reactor.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consensus/replay.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/replay.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consensus/replay_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/replay_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/p2p/conn/connection.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/conn/connection.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/p2p/peer.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/peer.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/p2p/switch.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/switch.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rpc/lib/rpc_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/rpc_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/state/execution_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tm-monitor/rpc.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-monitor/rpc.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/useetcd/use_etcd.go" beforeDir="false" afterPath="$PROJECT_DIR$/useetcd/use_etcd.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="DatabaseView">
+    <option name="SHOW_INTERMEDIATE" value="true" />
+    <option name="GROUP_DATA_SOURCES" value="true" />
+    <option name="GROUP_SCHEMA" value="true" />
+    <option name="GROUP_CONTENTS" value="false" />
+    <option name="SORT_POSITIONED" value="false" />
+    <option name="SHOW_EMPTY_GROUPS" value="false" />
+    <option name="AUTO_SCROLL_FROM_SOURCE" value="false" />
+    <option name="HIDDEN_KINDS">
+      <set />
+    </option>
+    <expand />
+    <select />
   </component>
   <component name="GOROOT" path="/usr/lib/go-1.10" />
   <component name="Git.Settings">
@@ -31,6 +57,7 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
     <property name="nodejs_npm_path_reset_for_default_project" value="true" />
+    <property name="nodejs_package_manager_path" value="npm" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -43,6 +70,69 @@
         </RuleState>
       </list>
     </option>
+  </component>
+  <component name="RunManager" selected="Go Test.TestNodeStartStop in github.com/tendermint/tendermint/node">
+    <configuration name="TestApplyBlock in github.com/tendermint/tendermint/state" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/state" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/tendermint/tendermint/state" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestApplyBlock$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestNodeStartStop in github.com/tendermint/tendermint/node" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/node" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/tendermint/tendermint/node" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestNodeStartStop$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="execution_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/state" />
+      <framework value="gotest" />
+      <kind value="FILE" />
+      <package value="github.com/tendermint/tendermint" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/state/execution_test.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="node_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/node" />
+      <framework value="gotest" />
+      <kind value="FILE" />
+      <package value="github.com/tendermint/tendermint" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/node/node_test.go" />
+      <method v="2" />
+    </configuration>
+    <configuration name="reactor_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/consensus" />
+      <framework value="gotest" />
+      <kind value="FILE" />
+      <package value="github.com/tendermint/tendermint" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/consensus/reactor_test.go" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestNodeStartStop in github.com/tendermint/tendermint/node" />
+        <item itemvalue="Go Test.reactor_test.go" />
+        <item itemvalue="Go Test.node_test.go" />
+        <item itemvalue="Go Test.TestApplyBlock in github.com/tendermint/tendermint/state" />
+        <item itemvalue="Go Test.execution_test.go" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
@@ -70,6 +160,71 @@
           <url>file://$PROJECT_DIR$/tools/tm-bench/transacter.go</url>
           <line>363</line>
           <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/line/line.go</url>
+          <line>60</line>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/rpc/lib/server/handlers.go</url>
+          <line>2</line>
+          <option name="timeStamp" value="6" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/blockchain/reactor.go</url>
+          <line>342</line>
+          <option name="timeStamp" value="8" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/blockchain/reactor.go</url>
+          <line>293</line>
+          <option name="timeStamp" value="10" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/node/node.go</url>
+          <line>834</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/node/node.go</url>
+          <line>324</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/node/node.go</url>
+          <line>315</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/rpc/lib/server/handlers_test.go</url>
+          <line>142</line>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/consensus/state.go</url>
+          <line>191</line>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/p2p/switch.go</url>
+          <line>520</line>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/state/execution.go</url>
+          <line>2</line>
+          <option name="timeStamp" value="22" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/blockchain/reactor.go</url>
+          <line>280</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/consensus/reactor.go</url>
+          <line>2</line>
+          <option name="timeStamp" value="29" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

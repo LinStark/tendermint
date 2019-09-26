@@ -156,22 +156,23 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 
 	mconn := &MConnection{
 		conn:          conn,
+		//buf是将con封装成bufio的读写，方便了类似文件IO的形式进行tcp进行读写操作
 		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
 		bufConnWriter: bufio.NewWriterSize(conn, minWriteBufferSize),
 		sendMonitor:   flow.New(0, 0),
 		recvMonitor:   flow.New(0, 0),
 		send:          make(chan struct{}, 1),
 		pong:          make(chan struct{}, 1),
-		onReceive:     onReceive,
-		onError:       onError,
+		onReceive:     onReceive,//当读取到数据之后，进行回调
+		onError:       onError,//当发生错误时，回调
 		config:        config,
 		created:       time.Now(),
 	}
 
-	// Create channels
+	// Create channels 创建通道
 	var channelsIdx = map[byte]*Channel{}
 	var channels = []*Channel{}
-
+	//
 	for _, desc := range chDescs {
 		channel := newChannel(mconn, *desc)
 		channelsIdx[channel.desc.ID] = channel
@@ -388,6 +389,7 @@ func (c *MConnection) CanSend(chID byte) bool {
 }
 
 // sendRoutine polls for packets to send from channels.
+//发送任务循环
 func (c *MConnection) sendRoutine() {
 	defer c._recover()
 
@@ -397,7 +399,7 @@ FOR_LOOP:
 		var err error
 	SELECTION:
 		select {
-		case <-c.flushTimer.Ch:
+		case <-c.flushTimer.Ch://周期性写入flush
 			// NOTE: flushTimer.Set() must be called every time
 			// something is written to .bufConnWriter.
 			c.flush()
@@ -405,7 +407,7 @@ FOR_LOOP:
 			for _, channel := range c.channels {
 				channel.updateStats()
 			}
-		case <-c.pingTimer.C:
+		case <-c.pingTimer.C://周期性向TCP连接写入ping信息
 			c.Logger.Debug("Send Ping")
 			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPing{})
 			if err != nil {
@@ -427,7 +429,7 @@ FOR_LOOP:
 			} else {
 				c.stopPongTimer()
 			}
-		case <-c.pong:
+		case <-c.pong://进行pong回复，这不是周期性写入，是因为收到了对方ping信息，这个通道是在RecvRoutine函数进行
 			c.Logger.Debug("Send Pong")
 			_n, err = cdc.MarshalBinaryLengthPrefixedWriter(c.bufConnWriter, PacketPong{})
 			if err != nil {
@@ -439,7 +441,8 @@ FOR_LOOP:
 			break FOR_LOOP
 		case <-c.send:
 			// Send some PacketMsgs
-			eof := c.sendSomePacketMsgs()
+			//大致流程就是从Channel的缓存区去数据，构造PacketMsg，写入TCP连接中。
+			eof := c.sendSomePacketMsgs()//进行包发送
 			if !eof {
 				// Keep sendRoutine awake.
 				select {
@@ -488,6 +491,8 @@ func (c *MConnection) sendPacketMsg() bool {
 	var leastRatio float32 = math.MaxFloat32
 	var leastChannel *Channel
 	for _, channel := range c.channels {
+		//检查channel.sendQueue 是否为0 channel.sending缓冲区是否为空 如果为空说明没有需要发送的内容了。
+		// 如果缓冲区为空了 就要把channel.sendQueue内部排队的内容 移出一份到缓冲区中。
 		// If nothing to send, skip this channel
 		if !channel.isSendPending() {
 			continue
@@ -506,6 +511,7 @@ func (c *MConnection) sendPacketMsg() bool {
 	}
 	// c.Logger.Info("Found a msgPacket to send")
 
+	// 执行到这里说明有某个Channel内部有消息没发送 将消息发送出去
 	// Make & send a PacketMsg from this channel
 	_n, err := leastChannel.writePacketMsgTo(c.bufConnWriter)
 	if err != nil {
@@ -577,6 +583,9 @@ FOR_LOOP:
 				// never block
 			}
 		case PacketMsg:
+			// 根据接收的报文，选择对应的Channel, 放入对应的接收缓存区中。 缓存区的作用是什么呢。
+			// 在上文的发送报文中我们发现一个PacketMsg包中可能并没有包含完整的内容，只有EOF为1才标识发送完成了。
+			// 所以下面这个函数其实就是先将接收到的内容放入缓存区，只有所有内容都收到之后才会组装成一个完整的内容。
 			channel, ok := c.channelsIdx[pkt.ChannelID]
 			if !ok || channel == nil {
 				err := fmt.Errorf("Unknown channel %X", pkt.ChannelID)
@@ -594,6 +603,10 @@ FOR_LOOP:
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
+				// 注意这个函数的调用非常重要，记得之前我说为啥只有Send没有Receive呢， 答案就在此处。
+				// 也就是说MConnecttion会把接收到的完整消息通过回调的形式返回给上面。 这个onReceive回调和Reactor的OnReceive是啥关系呢
+				// 以及这个ChannelID和Reactor又是啥关系呢 不着急， 后面我们慢慢分析。 反正可以确定的是MConnecttion通过这个回调函数把接收到的消息
+				// 返回给你应用层。
 				c.Logger.Debug("Received bytes", "chID", pkt.ChannelID, "msgBytes", fmt.Sprintf("%X", msgBytes))
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(pkt.ChannelID, msgBytes)
@@ -690,13 +703,16 @@ func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
+//peer调用send发送信息其实是调用Mconnecttion的Send方法
+//Mconnection的Send是把内容发送到Channel的SendQueue中，会有专门的routine读取channel，接着进行实际的信息发送
 type Channel struct {
+	//通道成员
 	conn          *MConnection
 	desc          ChannelDescriptor
-	sendQueue     chan []byte
+	sendQueue     chan []byte//发送队列
 	sendQueueSize int32 // atomic.
-	recving       []byte
-	sending       []byte
+	recving       []byte//接收缓冲区
+	sending       []byte//发送缓冲区
 	recentlySent  int64 // exponential moving average
 
 	maxPacketMsgPayloadSize int
@@ -775,6 +791,7 @@ func (ch *Channel) isSendPending() bool {
 // Creates a new PacketMsg to send.
 // Not goroutine-safe
 func (ch *Channel) nextPacketMsg() PacketMsg {
+	// 构造消息报文  如果缓冲区的内容过大，就要构造多个包进行封装。 以EOF为1来表示这个报文已经被完全封装了
 	packet := PacketMsg{}
 	packet.ChannelID = byte(ch.desc.ID)
 	maxSize := ch.maxPacketMsgPayloadSize
@@ -793,6 +810,7 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 // Writes next PacketMsg to w and updates c.recentlySent.
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
+	// 将结构体进行二进制编码发送 这里不再进行深入探索。只需要明白返回的数据也必须使用对应的方法才能进行正确的解包。 因为TCP是流式的
 	var packet = ch.nextPacketMsg()
 	n, err = cdc.MarshalBinaryLengthPrefixedWriter(w, packet)
 	atomic.AddInt64(&ch.recentlySent, n)

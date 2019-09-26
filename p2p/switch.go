@@ -65,12 +65,15 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
 type Switch struct {
-	cmn.BaseService
+	cmn.BaseService	//继承基本服务，方便统一启动和停止
 
-	config       *config.P2PConfig
+	config       *config.P2PConfig //接收P2P的配置文件 所以说P2P的启动入口应该就是先启动Switch实例
+	// Reactor和通道之间的对应关系 也是通过这个传递给peer在往下传递到MConnecttion
 	reactors     map[string]Reactor
+
 	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
+	//peer集合
 	peers        *PeerSet
 	dialing      *cmn.CMap
 	reconnecting *cmn.CMap
@@ -115,7 +118,7 @@ func NewSwitch(
 		transport:     transport,
 		filterTimeout: defaultFilterTimeout,
 	}
-
+	fmt.Println("我在这里新建一个Switch实例")
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
 
@@ -149,6 +152,11 @@ func WithMetrics(metrics *Metrics) SwitchOption {
 // AddReactor adds the given reactor to the switch.
 // NOTE: Not goroutine safe.
 func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
+
+	// 调用reactor的GetChannels方法获取相关的通道描述
+	// 也就是说一个Reactor可以启用好几个通道 但是这个通道ID是所有Reactor
+	// 都不可以重复的。
+
 	// Validate the reactor.
 	// No two reactors can share the same channel.
 	reactorChannels := reactor.GetChannels()
@@ -160,6 +168,10 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chID] = reactor
 	}
+
+	// 这个接口很重要 它把Switch的对象又传递给你Reactor 这样Reactor也可以调用Switch的函数了
+	// 这回真的是你中有我我中有你了
+
 	sw.reactors[name] = reactor
 	reactor.SetSwitch(sw)
 	return reactor
@@ -200,8 +212,18 @@ func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
+	// 首先调用Reactor 启动所有的Reactor
+	// Reactor 是一个接口，反正你只要实现此接口函数
+	// 那么函数中啥也不做也没关系。 不过如果啥也不做
+	// 这个Reactor也就没有什么实际意义了。
+	// 在创建Switch中 sw.reactors 里面是空的
+	// 那么这些Reactor是怎么添加进来的呢
+	// 所以Switch提供了一个方法叫做AddReactor 专门添加Reactor
+	// 上面也说了在tendermint里面有6个Reactor 它们是在node/node.go
+	// 文件中被添加的 类似于下面这样
 	// Start reactors
 	for _, reactor := range sw.reactors {
+
 		err := reactor.Start()
 		if err != nil {
 			return cmn.ErrorWrap(err, "failed to start %v", reactor)

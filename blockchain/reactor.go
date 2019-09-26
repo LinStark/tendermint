@@ -6,9 +6,10 @@ import (
 	"reflect"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/libs/log"
+	myline "github.com/tendermint/tendermint/line"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -55,10 +56,9 @@ func (e peerError) Error() string {
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	p2p.BaseReactor
-
+	line      *myline.Line
 	// immutable
 	initialState sm.State
-
 	blockExec *sm.BlockExecutor
 	store     *BlockStore
 	pool      *BlockPool
@@ -67,8 +67,24 @@ type BlockchainReactor struct {
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
 }
-
+type node struct{
+	target map[string] []string
+}
 // NewBlockchainReactor returns new reactor instance.
+func (bcR *BlockchainReactor) newline1() *myline.Line{
+
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	}
+
+	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+
+	l:=myline.NewLine(endpoints.target)
+	return l
+}
 func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
 	fastSync bool) *BlockchainReactor {
 
@@ -87,7 +103,6 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 		requestsCh,
 		errorsCh,
 	)
-
 	bcR := &BlockchainReactor{
 		initialState: state,
 		blockExec:    blockExec,
@@ -97,6 +112,15 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 	}
+	bcR.line= bcR.newline1()
+	//go func(){
+	//	if err:=bcR.line.Start();err!=nil{
+	//		fmt.Println(err)
+	//	}
+	//	fmt.Println("reactor connect!!!!!!!!!!!!!!!!")
+	//}()
+
+
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
 }
@@ -114,8 +138,17 @@ func (bcR *BlockchainReactor) OnStart() error {
 		if err != nil {
 			return err
 		}
+
 		go bcR.poolRoutine()
 	}
+	//go func(){
+	//	if err:=bcR.line.Start();err!=nil{
+	//		fmt.Println(err)
+	//		return
+	//	}
+	//	fmt.Println("newconsensusstate connect!!!!!!!!!!!!!!!!")
+	//	return
+	//}()
 	return nil
 }
 
@@ -258,7 +291,6 @@ func (bcR *BlockchainReactor) poolRoutine() {
 			}
 		}
 	}()
-
 FOR_LOOP:
 	for {
 		select {

@@ -117,7 +117,12 @@ type peer struct {
 }
 
 type PeerOption func(*peer)
-
+// peerConn 是传递参数。 它拥有了net.Conn成员变量
+// 为什么会专门设置一个peerConn结构呢， 为啥不直接使用net.Conn
+// 因为peer既可能是一个客户端的连接也可能是一个服务端的连接。
+// 所有才有了这个结构。 peerConn的创建可以使用newOutboundPeerConn和
+// newInboundPeerConn两个函数来创建。 这两个函数是在switch组件中被调用的。
+// 当然 peer整个实例的创建都是在switch组件中调用的。
 func newPeer(
 	pc peerConn,
 	mConfig tmconn.MConnConfig,
@@ -135,7 +140,7 @@ func newPeer(
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
 	}
-
+	// 创建MConnecttion实例由这个函数进行。
 	p.mconn = createMConnection(
 		pc.conn,
 		p,
@@ -175,7 +180,7 @@ func (p *peer) OnStart() error {
 	if err := p.BaseService.OnStart(); err != nil {
 		return err
 	}
-
+	//开启了send和recv两个routine
 	if err := p.mconn.Start(); err != nil {
 		return err
 	}
@@ -238,6 +243,7 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
+//阻塞状态
 func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	if !p.IsRunning() {
 		// see Switch#Broadcast, where we fetch the list of peers and loop over
@@ -255,6 +261,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
 // false if the send queue is full.
+//非阻塞状态
 func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	if !p.IsRunning() {
 		return false
@@ -361,7 +368,9 @@ func createMConnection(
 	onPeerError func(Peer, interface{}),
 	config tmconn.MConnConfig,
 ) *tmconn.MConnection {
-
+	// 看到没？ 这里就是回调函数初始化的地方。 这里可以看到channel应该是和
+	// Reactor是一一对应的。 每一个chID应该对应一个MConnecttion的channel。 当收到PackMsg时，根据id区分出应该投递给
+	// 哪一个Reactor 然后调用对应的reactor.Receive将消息返还给上层应用。
 	onReceive := func(chID byte, msgBytes []byte) {
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
@@ -372,7 +381,7 @@ func createMConnection(
 		p.metrics.PeerReceiveBytesTotal.With("peer_id", string(p.ID())).Add(float64(len(msgBytes)))
 		reactor.Receive(chID, p, msgBytes)
 	}
-
+	// 这个错误回调看上去依然是根据参数传递过来的。 那么应该是在switch组件中才能看到对错误的处理方法。
 	onError := func(r interface{}) {
 		onPeerError(p, r)
 	}

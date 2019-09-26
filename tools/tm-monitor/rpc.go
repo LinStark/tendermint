@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 
@@ -12,6 +13,9 @@ import (
 
 func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) net.Listener {
 	routes := routes(m)
+
+	fmt.Println("routes的值")
+	fmt.Println(routes)
 
 	mux := http.NewServeMux()
 	wm := rpc.NewWebsocketManager(routes, nil)

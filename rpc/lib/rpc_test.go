@@ -120,6 +120,7 @@ func setup() {
 	server.RegisterRPCFuncs(mux, Routes, RoutesCdc, tcpLogger)
 	wm := server.NewWebsocketManager(Routes, RoutesCdc, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
+
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	config := server.DefaultConfig()
 	listener1, err := server.Listen(tcpAddr, config)
