@@ -24,6 +24,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	//myline "github.com/tendermint/tendermint/line"
 )
 
 const (
@@ -84,7 +85,7 @@ func (t *transacter) Start() error {
 	t.stopped = false
 
 	rand.Seed(time.Now().Unix())
-
+	fmt.Println("开始————————————————————————————————————————————————————————————")
 	for i := 0; i < t.Connections; i++ {
 		c, _, err := connect(t.Target)
 		if err != nil {
@@ -119,9 +120,12 @@ func (t *transacter) Stop() {
 // `broadcast_tx_async`).
 func (t *transacter) receiveLoop(connIndex int) {
 	c := t.conns[connIndex]
+	//c1 := myline.UseConnect("B",0)
+
 	defer t.endingWg.Done()
 	for {
-		_, p, err := c.ReadMessage()
+		//_, p, err1 := c1.ReadMessage()
+		_, _, err := c.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				t.logger.Error(
@@ -132,7 +136,19 @@ func (t *transacter) receiveLoop(connIndex int) {
 			}
 			return
 		}
-		fmt.Println("返回结果：",string(p))
+		//fmt.Println(string(p))
+		//if err1 != nil {
+		//	if !websocket.IsClo
+		//	seError(err1, websocket.CloseNormalClosure) {
+		//		t.logger.Error(
+		//			fmt.Sprintf("failed to read response on conn %d", connIndex),
+		//			"err",
+		//			err1,
+		//		)
+		//	}
+		//	return
+		//}
+		//fmt.Println(p)
 		if t.stopped || t.connsBroken[connIndex] {
 			return
 		}
@@ -149,6 +165,16 @@ func (t *transacter) sendLoop(connIndex int) {
 		}
 	}()
 	c := t.conns[connIndex]
+	//c1:=myline.UseConnect("B","192.16.5.1")
+	//c1.SetPingHandler(func(message string) error {
+	//	err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
+	//	if err == websocket.ErrCloseSent {
+	//		return nil
+	//	} else if e, ok := err.(net.Error); ok && e.Temporary() {
+	//		return nil
+	//	}
+	//	return err
+	//})
 
 	c.SetPingHandler(func(message string) error {
 		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
@@ -170,6 +196,8 @@ func (t *transacter) sendLoop(connIndex int) {
 		pingsTicker.Stop()
 		txsTicker.Stop()
 		t.endingWg.Done()
+		fmt.Println("关闭进程")
+		time.Sleep(time.Second*100)
 	}()
 
 	// hash of the host name is a part of each tx
@@ -188,6 +216,7 @@ func (t *transacter) sendLoop(connIndex int) {
 	//hex.Encode(txHex, tx)
 	allShard:=strings.Split(t.allshard,",")
 	send_shard:=deleteSlice(allShard,t.shard)
+
 
 	for {
 		select {
@@ -216,6 +245,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				}
 				rawParamsJSON := json.RawMessage(paramsJSON)
 
+
 				c.SetWriteDeadline(now.Add(sendTimeout))
 				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
@@ -223,6 +253,14 @@ func (t *transacter) sendLoop(connIndex int) {
 					Method:  t.BroadcastTxMethod,
 					Params:  rawParamsJSON,
 				})
+				//c1.SetWriteDeadline(now.Add(sendTimeout))
+				//fmt.Println("发送消息")
+				//err1 := c.WriteJSON(rpctypes.RPCRequest{
+				//	JSONRPC: "2.0",
+				//	ID:      rpctypes.JSONRPCStringID("tm-bench"),
+				//	Method:  t.BroadcastTxMethod,
+				//	Params:  rawParamsJSON,
+				//})
 				if err != nil {
 					err = errors.Wrap(err,
 						fmt.Sprintf("txs send failed on connection #%d", connIndex))
@@ -230,6 +268,13 @@ func (t *transacter) sendLoop(connIndex int) {
 					logger.Error(err.Error())
 					return
 				}
+				//if err1 != nil {
+				//	err1 = errors.Wrap(err,
+				//		fmt.Sprintf("txs send failed on connection #%d", connIndex))
+				//	t.connsBroken[connIndex] = true
+				//	logger.Error(err.Error())
+				//	return
+				//}
 /*
 			if(i%2==0){
 				atx:=sendaddtx(ntx)
@@ -396,7 +441,7 @@ func updateTx(txNumber int,send_shard []string,shard string)[]byte {
 			Content :[]string{content}} 
        		res, _  = json.Marshal(tx)
 	}
-	fmt.Println("the length is ",len(res))
+
 	return res
 
 }

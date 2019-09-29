@@ -87,7 +87,7 @@ func (e Use_Etcd)Query(key string)(value []byte){
 		DialKeepAliveTime:5*time.Second,
 	})
 	key = "/"+key	
-	fmt.Println(key)
+	//fmt.Println(key)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := cli.Get(ctx,key)
 	cancel()
@@ -97,7 +97,7 @@ func (e Use_Etcd)Query(key string)(value []byte){
 	}
 	for _, ev := range resp.Kvs {
 		b:=ev.Value
-		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+		//fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 		return b
 	}
 	return

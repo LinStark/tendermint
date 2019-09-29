@@ -8,7 +8,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/types"
 )
@@ -146,5 +146,6 @@ func printStatistics(stats *statistics, outputFormat string) {
 			),
 		)
 		w.Flush()
+
 	}
 }

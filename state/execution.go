@@ -5,10 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -21,15 +25,76 @@ import (
 	useetcd "github.com/tendermint/tendermint/useetcd"
 
 	myline "github.com/tendermint/tendermint/line"
-
 )
-
+var flag_conn map[string][]string
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
 // It exposes ApplyBlock(), which validates & executes the block, updates state w/ ABCI responses,
 // then commits and updates the mempool atomically, then saves state.
 
 // BlockExecutor provides the context and accessories for properly executing a block.
+//type Line struct {
+//	target map[string][]string
+//	conns  map[string][]*websocket.Conn
+//}
+//type node struct{
+//	target map[string] []string
+//}
+//func NewLine(target map[string][]string) *Line {
+//	//sum是算整体网络的节点个数，为了开辟相当的空间
+//	var sum int
+//	sum = 0
+//	for shard := range target {
+//		sum += len(target[shard])
+//	}
+//	return &Line{
+//		target: target, //目标节点地址
+//		conns:  make(map[string][]*websocket.Conn, sum), //连接地址
+//	}
+//}
+//func newline() *Line{
+//	endpoints:=&node{
+//		target:make(map[string][]string,16),
+//	}
+//
+//	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+//	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+//	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+//	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+//
+//	l:=NewLine(endpoints.target)
+//	err:=l.Start()
+//	if err!=nil{
+//		return nil
+//	}
+//	return l
+//}
+//func (l *Line) Start() error {
+//	time.Sleep(time.Second*20)
+//	for shard := range l.target {
+//		l.conns[shard]=make([]*websocket.Conn,len(l.target[shard]))
+//
+//		for i, ip := range l.target[shard] {
+//
+//			s, _, err := connect(ip)
+//			if err != nil {
+//				fmt.Println("连接出错:",ip)
+//				return err
+//			}
+//			fmt.Println("首次连接",l.conns[shard][i])
+//			l.conns[shard][i] = s
+//		}
+//	}
+//	return nil
+//}
+//var c =newline()
+const (
+	sendTimeout = 10 * time.Second
+)
+type Cn struct {
+	conn *websocket.Conn
+	mu sync.Mutex
+}
 type BlockExecutor struct {
 	// save state, validators, consensus params, abci responses here
 	db dbm.DB
@@ -198,9 +263,8 @@ func (blockExec *BlockExecutor) CheckRelayTxs(/*line *myline.Line,*/block *types
 	client := &http.Client{}
 	if len(resendTxs) > 0 {
 		for i := 0; i < len(resendTxs); i++ {
-			go blockExec.Sendtxs(resendTxs[i], i%3, client)
+			blockExec.Sendtxs(resendTxs[i], i%3, client)
 		}
-
 	}
 
 	//对当前提交的块检查，看是否有新的relayTxs产生
@@ -285,7 +349,13 @@ func (blockExec *BlockExecutor) GetAllTxs() []tp.TX {
 	cpTxs := blockExec.mempool.GetAllTxs()
 	return cpTxs
 }
-
+func  (blockExec *BlockExecutor)send(num int,shard_send[4][]tp.TX, client *http.Client,i int){
+	if num > 0 {
+		for j := 0; j < num; j++ {
+			blockExec.Sendtxs(shard_send[i][j], j%3, client)
+		}
+	}
+}
 func (blockExec *BlockExecutor) SendRelayTxs(/*line *myline.Line,*/txs []tp.TX) {
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
@@ -299,11 +369,7 @@ func (blockExec *BlockExecutor) SendRelayTxs(/*line *myline.Line,*/txs []tp.TX) 
 	for i := 0; i < len(shard_send); i++ {
 		if shard_send[i] != nil {
 			num := len(shard_send[i])
-			if num > 0 {
-				for j := 0; j < num; j++ {
-					go blockExec.Sendtxs(shard_send[i][j], j%3, client)
-				}
-			}
+			go blockExec.send(num,shard_send,client,i)
 
 		}
 	}
@@ -324,12 +390,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(/*line *myline.Line,*/txs []tp
 	for i := 0; i < len(shard_send); i++ {
 		if shard_send[i] != nil {
 			num := len(shard_send[i])
-			if num > 0 {
-				for j := 0; j < num; j++ {
-					go blockExec.Sendtxs(shard_send[i][j], j%3, client)
-				}
-			}
-
+			go blockExec.send(num,shard_send,client,i)
 		}
 	}
 }
@@ -340,15 +401,24 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs(/*line *myline.Line,*/txs []tp
 func (blockExec *BlockExecutor) Sendtxs(/*line *myline.Line,*/tx tp.TX, flag int, client *http.Client) {
 	SiteIp := ""
 	e := useetcd.NewEtcd()
+	var c1 *websocket.Conn
+	//var conn *websocket.Conn
 	//fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
 	if tx.Txtype == "addtx" {
 		SiteIp = string(e.Query(tx.Sender))
+		c1= myline.UseConnect(tx.Sender,SiteIp)
+
+		//fmt.Println(SiteIp)
+		//conn=c.conns[tx.Sender][0]
 	} else {
 		SiteIp = string(e.Query(tx.Receiver))
+		c1= myline.UseConnect(tx.Receiver,SiteIp)
+		//conn=c.conns[tx.Receiver][0]
 	}
+
 	//line.Test()
 	//fmt.Println(SiteIp)
-	blockExec.Send2TEN(tx, SiteIp, flag, client)
+	blockExec.Send4TEN(tx, c1, flag, client)
 }
 
 //替代etcd，加了etcd时长变长，容易出现超时错误
@@ -393,16 +463,27 @@ type RPCRequest struct {
 	Receiver string          `json:"Receiver"` //添加接受者
 	Flag     int             `json:"Flag"`
 }
-
+func connect(host string) (*websocket.Conn, *http.Response, error) {
+	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
+	return websocket.DefaultDialer.Dial(u.String(), nil)
+}
 func (blockExec *BlockExecutor) Send2TEN(/*line *myline.Line,*/tx tp.TX, ip string, flag int, client *http.Client) {
 	//port:=[]string{"26657","36657","46657"}
 	//e := useetcd.NewEtcd()
 	if tx.Txtype == "addtx" {
 		fmt.Println("现在我要发送addtx出去")
 	}
+	//c, _, err := connect(ip)
+	//if err != nil {
+	//	fmt.Println("connnection fail:",ip)
+	//	return
+	//}
+
+
 	Sender := tx.Sender
 	Receiver := tx.Receiver
-	fmt.Println("receiver:", Receiver)
+
+	//fmt.Println("receiver:", Receiver)
 	res, _ := json.Marshal(tx)
 	requestBody := new(bytes.Buffer)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
@@ -410,6 +491,7 @@ func (blockExec *BlockExecutor) Send2TEN(/*line *myline.Line,*/tx tp.TX, ip stri
 		fmt.Printf("failed to encode params: %v\n", err)
 		os.Exit(1)
 	}
+
 	rawParamsJSON := json.RawMessage(paramsJSON)
 	rc := &rpctypes.RPCRequest{
 		JSONRPC:  "2.0",
@@ -419,9 +501,25 @@ func (blockExec *BlockExecutor) Send2TEN(/*line *myline.Line,*/tx tp.TX, ip stri
 		Method:   "broadcast_tx_commit",
 		Params:   rawParamsJSON,
 	}
+	//err1:=s.WriteJSON(rc)
+	//
+	//if err1!=nil{
+	//	s.Close()
+	//	return
+	//}
+	//s.Close()
+	//go func(*websocket.Conn){
+	//	_, p, err := c.ReadMessage()
+	//	if err!=nil{
+	//		fmt.Println("connection fail read")
+	//		c.Close()
+	//		return
+	//	}
+	//	fmt.Println(string(p))
+	//}(c)
 	//line.SendMessage(rc,Receiver)
-	fmt.Println("sender:", rc.Sender)
-	fmt.Println("发送的方法:", rc.Method)
+	//fmt.Println("sender:", rc.Sender)
+	//fmt.Println("发送的方法:", rc.Method)
 	json.NewEncoder(requestBody).Encode(rc)
 	url := "http://" + ip
 	fmt.Println(url)
@@ -452,6 +550,107 @@ func (blockExec *BlockExecutor) Send2TEN(/*line *myline.Line,*/tx tp.TX, ip stri
 	}
 
 }
+func (blockExec *BlockExecutor) Send4TEN(/*line *myline.Line,*/tx tp.TX, c *websocket.Conn, flag int, client *http.Client) {
+	//port:=[]string{"26657","36657","46657"}
+	//e := useetcd.NewEtcd()
+	if tx.Txtype == "addtx" {
+		fmt.Println("现在我要发送addtx出去")
+	}
+	//c, _, err := connect(ip)
+	//if err != nil {
+	//	fmt.Println("connnection fail:",ip)
+	//	return
+	//}
+
+
+	//Sender := tx.Sender
+	//Receiver := tx.Receiver
+
+	//fmt.Println("receiver:", Receiver)
+	res, _ := json.Marshal(tx)
+	//requestBody := new(bytes.Buffer)
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	c.SetPingHandler(func(message string) error {
+		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
+		if err == websocket.ErrCloseSent {
+			return nil
+		} else if e, ok := err.(net.Error); ok && e.Temporary() {
+			return nil
+		}
+		return err
+	})
+	c.SetWriteDeadline(time.Now().Add(sendTimeout))
+	rawParamsJSON := json.RawMessage(paramsJSON)
+	//rc := &rpctypes.RPCRequest{
+	//	JSONRPC:  "2.0",
+	//	Sender:   Sender,
+	//	Receiver: Receiver,
+	//	Flag:     flag,
+	//	Method:   "broadcast_tx_commit",
+	//	Params:   rawParamsJSON,
+	//}
+	//fmt.Println("进行到这里")
+	//time.Sleep(time.Microsecond*100)
+	err1:=c.WriteJSON(rpctypes.RPCRequest{
+		JSONRPC: "2.0",
+		ID:      rpctypes.JSONRPCStringID("tm-bench"),
+		Method:  "broadcast_tx_commit",
+		Params:  rawParamsJSON,
+	})
+	if err1!=nil{
+		fmt.Println("错误！！！")
+		fmt.Println(err1)
+	}
+
+	//
+	//s.Close()
+	//go func(*websocket.Conn){
+	//	_, p, err := c.ReadMessage()
+	//	if err!=nil{
+	//		fmt.Println("connection fail read")
+	//		c.Close()
+	//		return
+	//	}
+	//	fmt.Println(string(p))
+	//}(c)
+	//line.SendMessage(rc,Receiver)
+	//fmt.Println("sender:", rc.Sender)
+	//fmt.Println("发送的方法:", rc.Method)
+	//json.NewEncoder(requestBody).Encode(rc)
+	//url := "http://" + ip
+	//fmt.Println(url)
+	//req, err := http.NewRequest("POST", url, requestBody)
+	//req.Header.Set("Content-Type", "application/json")
+	//
+	//if err != nil {
+	//	panic(err)
+	//}
+	//response, err := client.Do(req)
+	//if err != nil {
+	//	fmt.Println(err)
+	//}
+	//body, _ := ioutil.ReadAll(response.Body)
+	//var f interface{}
+	//jserror := json.Unmarshal(body, &f)
+	//if jserror != nil {
+	//	fmt.Println(jserror)
+	//}
+	//m := f.(map[string]interface{})
+	//for k, v := range m {
+	//	if k == "error" {
+	//		md, _ := v.(map[string]interface{})
+	//		if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
+	//			blockExec.RemoveFromRelaytxDB(tx)
+	//		}
+	//	}
+	//}
+
+}
+
 func (blockExec *BlockExecutor) Send3TEN(line *myline.Line,tx tp.TX, ip string, flag int, client *http.Client) {
 	//port:=[]string{"26657","36657","46657"}
 	//e := useetcd.NewEtcd()

@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	//"github.com/gorilla/websocket"
 	"os"
 	"strings"
 	"sync"
@@ -13,11 +14,13 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
+	//myline "github.com/tendermint/tendermint/line"
 )
 
 var logger = log.NewNopLogger()
 
 func main() {
+
 	//durationInt表示持续时间
 	//txsRate 发送交易个数
 	//connections表示链接的个数
@@ -61,7 +64,15 @@ Examples:
 		flagSet.Usage()
 		os.Exit(1)
 	}
+	//fmt.Println("我使用了连接！！！")
+	//c1 := myline.UseConnect("A",0)
+	//go func(c *websocket.Conn){
+	//	_,p,_:=c.ReadMessage()
+	//	fmt.Println(p)
+	//}(c1)
 
+
+	fmt.Println("连接关闭！！！")
 	if verbose {
 		if outputFormat == "json" {
 			printErrorAndExit("Verbose mode not supported with json output.")
@@ -95,6 +106,7 @@ Examples:
 		client        = tmrpc.NewHTTP(endpoints[0], "/websocket")
 		initialHeight = latestBlockHeight(client)
 	)
+
 	logger.Info("Latest block height", "h", initialHeight)
 	//开始创建client,发送交易
 	var transacters []*transacter
@@ -116,6 +128,7 @@ Examples:
 
 	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
+	fmt.Println(timeStart)
 	logger.Info("Time last transacter started", "t", timeStart)
 
 	duration := time.Duration(durationInt) * time.Second
@@ -144,6 +157,7 @@ Examples:
 	}
 
 	printStatistics(stats, outputFormat)
+
 }
 
 func latestBlockHeight(client tmrpc.Client) int64 {

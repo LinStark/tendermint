@@ -10,14 +10,89 @@ import (
 
 	"github.com/gorilla/websocket"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-
 )
+func newline() *Line{
+	endpoints:=&node{
+		target:make(map[string][]string,16),
+	}
 
+	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
+	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
+	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
+	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+
+	l1:=NewLine(endpoints.target)
+
+	return l1
+}
 type Line struct {
 	target map[string][]string
 	conns  map[string][]*websocket.Conn
+
+}
+//type Cn struct {
+//	conn *websocket.Conn
+//	mu sync.Mutex
+//}
+type node struct{
+	target map[string] []string
+}
+var l *Line
+//var cn1 *Cn
+func begin(){
+	if err:=l.Start();err!=nil{
+		fmt.Println("连接错误！")
+		fmt.Println(err)
+		return
+	}
+
+}
+func init(){
+
+	l=newline()
+	go begin()
+}
+func receiveloop(conn *websocket.Conn,shard string,i int){
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			fmt.Println("连接中断")
+
+			fmt.Println(err)
+			ip := l.target[shard][i]
+			fmt.Println("无法连接",ip)
+			c,_,err := l.connect(ip)
+			if err!=nil{
+				fmt.Println("连接失败")
+				fmt.Println(err)
+				go receiveloop(c,shard,i)
+				return
+			}
+			go receiveloop(c,shard,i)
+			return
+		}
+		//fmt.Println(string(p))
+	}
 }
 
+func UseConnect(key string,ip string)*websocket.Conn{
+	//cn1.mu.Lock()
+	//var j int
+	rand.Seed(time.Now().Unix())
+	rnd := rand.Intn(4)
+	//for i,siteip := range l.target[key]{
+	//	if siteip==ip{
+	//		j = i
+	//	}else{
+	//		j = 0
+	//	}
+	//}
+	//fmt.Println(j)
+	//fmt.Println(l.target[key][j],"connection","j:",j)
+	c:=l.conns[key][rnd]
+
+	return c
+}
 //连接函数
 func (l *Line) connect(host string) (*websocket.Conn, *http.Response, error) {
 	u := url.URL{Scheme: "ws", Host: host, Path: "/websocket"}
@@ -63,8 +138,9 @@ func (l *Line) Start() error {
 				fmt.Println("连接出错:",ip)
 				return err
 			}
-			fmt.Println("首次连接",l.conns[shard][i])
 			l.conns[shard][i] = c
+			fmt.Println("连接成功！！")
+			go receiveloop(c,shard,i)
 		}
 	}
 	return nil

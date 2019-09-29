@@ -489,7 +489,7 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-
+	fmt.Println(config.P2P.AddrBookFile())
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
@@ -578,7 +578,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
-	fmt.Println("看看",n.config.P2P.ListenAddress)
+
 	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
 	if err != nil {
 		return err
@@ -597,14 +597,15 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
+	fmt.Println("看看连接了哪些东西",n.config.P2P.PersistentPeers)
 	if n.config.P2P.PersistentPeers != "" {
-
+		fmt.Println("看看连接了哪些东西",n.config.P2P.PersistentPeers)
 		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
 	}
-	fmt.Println("开始节点连接",n.config.P2P.PersistentPeers)
+
 
 	return nil
 }

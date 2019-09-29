@@ -2,23 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="Merge branch 'master' of https://github.com/LinStark/tendermint&#10;&#10;# Conflicts:&#10;#&#9;consensus/state.go&#10;#&#9;line/line.go&#10;#&#9;state/execution.go">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/tendermint.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/tendermint.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/blockchain/reactor.go" beforeDir="false" afterPath="$PROJECT_DIR$/blockchain/reactor.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/replay.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/replay.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/replay_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/replay_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/tendermint/commands/run_node.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/tendermint/commands/run_node.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/conn/connection.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/conn/connection.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/peer.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/peer.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/switch.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/switch.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpc/lib/rpc_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/rpc_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/state/execution_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-monitor/rpc.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-monitor/rpc.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tm-bench/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tm-bench/statistics.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/statistics.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tm-bench/transacter.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/transacter.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/useetcd/use_etcd.go" beforeDir="false" afterPath="$PROJECT_DIR$/useetcd/use_etcd.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -41,6 +37,13 @@
     <expand />
     <select />
   </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
   <component name="GOROOT" path="/usr/lib/go-1.10" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -50,6 +53,7 @@
   </component>
   <component name="ProjectId" id="1RAodPcZWnNbA6IruuHem0X9P9E" />
   <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.sdk.automatically.set" value="true" />
@@ -153,18 +157,13 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/tools/tm-bench/transacter.go</url>
-          <line>152</line>
+          <line>178</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/tools/tm-bench/transacter.go</url>
-          <line>363</line>
+          <line>408</line>
           <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/line/line.go</url>
-          <line>60</line>
-          <option name="timeStamp" value="5" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/rpc/lib/server/handlers.go</url>
@@ -183,7 +182,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/node/node.go</url>
-          <line>834</line>
+          <line>835</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
@@ -225,6 +224,16 @@
           <url>file://$PROJECT_DIR$/consensus/reactor.go</url>
           <line>2</line>
           <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/cmd/tendermint/main.go</url>
+          <line>30</line>
+          <option name="timeStamp" value="36" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/state/execution.go</url>
+          <line>469</line>
+          <option name="timeStamp" value="37" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
