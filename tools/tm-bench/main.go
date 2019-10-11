@@ -71,8 +71,7 @@ Examples:
 	//	fmt.Println(p)
 	//}(c1)
 
-
-	fmt.Println("连接关闭！！！")
+	//fmt.Println("连接关闭！！！")
 	if verbose {
 		if outputFormat == "json" {
 			printErrorAndExit("Verbose mode not supported with json output.")
@@ -145,7 +144,7 @@ Examples:
 		}
 	}
 	logger.Debug("Time all transacters stopped", "t", time.Now())
-
+	time.Sleep(time.Second * 10)
 	stats, err := calculateStatistics(
 		client,
 		initialHeight,

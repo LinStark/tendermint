@@ -412,7 +412,6 @@ func NewNode(config *cfg.Config,
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
-	fmt.Println("建立P2P连接")
 	if !config.P2P.AllowDuplicateIP {
 		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter())
 	}
@@ -597,15 +596,12 @@ func (n *Node) OnStart() error {
 	}
 
 	// Always connect to persistent peers
-	fmt.Println("看看连接了哪些东西",n.config.P2P.PersistentPeers)
 	if n.config.P2P.PersistentPeers != "" {
-		fmt.Println("看看连接了哪些东西",n.config.P2P.PersistentPeers)
 		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
 	}
-
 
 	return nil
 }
@@ -687,7 +683,6 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()
 	}
-
 
 	// we may expose the rpc over both a unix and tcp socket
 	listeners := make([]net.Listener, len(listenAddrs))

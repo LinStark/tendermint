@@ -67,7 +67,6 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 			}
 
 			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
-			fmt.Println("看看",config.P2P.PersistentPeers)
 			// Run forever.
 			select {}
 		},

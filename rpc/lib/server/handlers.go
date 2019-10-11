@@ -27,6 +27,16 @@ import (
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
+var count = 0
+
+func lis(flag string) {
+	if flag == "flag" {
+		count++
+		time.Sleep(time.Second)
+		fmt.Println("接受跨片交易数量:", count)
+	}
+}
+
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) {
@@ -155,33 +165,33 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		//	WriteRPCResponseHTTP(w, types.RPCResponse{JSONRPC: "2.0", ID: tx.ID, Content: "Success"})
 		//	return
 		//} else {
-			//Now, fetch the RPCFunc and execute it.
-			rpcFunc := funcMap[request.Method]
-			if rpcFunc == nil || rpcFunc.ws {
-				WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
-				return
-			}
+		//Now, fetch the RPCFunc and execute it.
+		rpcFunc := funcMap[request.Method]
+		if rpcFunc == nil || rpcFunc.ws {
+			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
+			return
+		}
 
-			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
-				if err != nil {
-					WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
-					return
-				}
-				args = append(args, fnArgs...)
-			}
-
-			returns := rpcFunc.f.Call(args)
-			fmt.Println("method:", request.Method)
-			logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
-			result, err := unreflectResult(returns)
+		ctx := &types.Context{JSONReq: &request, HTTPReq: r}
+		args := []reflect.Value{reflect.ValueOf(ctx)}
+		if len(request.Params) > 0 {
+			fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
 			if err != nil {
-				WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
+				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
 				return
 			}
-			WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
+			args = append(args, fnArgs...)
+		}
+
+		returns := rpcFunc.f.Call(args)
+		fmt.Println("method:", request.Method)
+		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
+		result, err := unreflectResult(returns)
+		if err != nil {
+			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
+			return
+		}
+		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
 		//}
 	}
 }
@@ -447,7 +457,7 @@ const (
 type wsConnection struct {
 	cmn.BaseService
 
-	wsline *myline.Line
+	wsline     *myline.Line
 	remoteAddr string
 	baseConn   *websocket.Conn
 	writeChan  chan types.RPCResponse
@@ -747,36 +757,37 @@ func (wsc *wsConnection) readRoutine() {
 			//	}
 			//	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
 			//}else{
-				rpcFunc := wsc.funcMap[request.Method]
-				if rpcFunc == nil {
-					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-					continue
-				}
+			go lis(request.Sender)
+			rpcFunc := wsc.funcMap[request.Method]
+			if rpcFunc == nil {
+				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+				continue
+			}
 
-				ctx := &types.Context{JSONReq: &request, WSConn: wsc}
-				args := []reflect.Value{reflect.ValueOf(ctx)}
-				if len(request.Params) > 0 {
-					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
-					if err != nil {
-						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
-						continue
-					}
-					args = append(args, fnArgs...)
-				}
-
-				returns := rpcFunc.f.Call(args)
-
-				// TODO: Need to encode args/returns to string if we want to log them
-				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
-				result, err := unreflectResult(returns)
+			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+			args := []reflect.Value{reflect.ValueOf(ctx)}
+			if len(request.Params) > 0 {
+				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
 					continue
 				}
+				args = append(args, fnArgs...)
+			}
 
-				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
-				//}
+			returns := rpcFunc.f.Call(args)
+
+			// TODO: Need to encode args/returns to string if we want to log them
+			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
+			result, err := unreflectResult(returns)
+			if err != nil {
+				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+				continue
+			}
+
+			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
+			//}
 			//}if的终结点
 			//	fmt.Println("request.params")
 			//	fmt.Println(request.Params)
@@ -790,7 +801,6 @@ func (wsc *wsConnection) readRoutine() {
 			//	return
 			//}else{
 			// Now, fetch the RPCFunc and execute it.
-
 
 		}
 	}
@@ -901,22 +911,21 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to upgrade to websocket connection", "err", err)
 		return
 	}
-	type node struct{
-		target map[string] []string
+	type node struct {
+		target map[string][]string
 	}
-	endpoints:=&node{
-		target:make(map[string][]string,16),
+	endpoints := &node{
+		target: make(map[string][]string, 16),
 	}
 
-	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
-	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
-	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
-	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
+	endpoints.target["A"] = []string{"192.168.5.56:26657", "192.168.5.56:36657", "192.168.5.56:46657", "192.168.5.56:56657"}
+	endpoints.target["B"] = []string{"192.168.5.57:26657", "192.168.5.57:36657", "192.168.5.57:46657", "192.168.5.57:56657"}
+	endpoints.target["C"] = []string{"192.168.5.58:26657", "192.168.5.58:36657", "192.168.5.58:46657", "192.168.5.58:56657"}
+	endpoints.target["D"] = []string{"192.168.5.60:26657", "192.168.5.60:36657", "192.168.5.60:46657", "192.168.5.60:56657"}
 
-
-	wsline:=myline.NewLine(endpoints.target)
+	wsline := myline.NewLine(endpoints.target)
 	// register connection
-	con := NewWSConnection(wsConn, wsline,wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := NewWSConnection(wsConn, wsline, wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 
