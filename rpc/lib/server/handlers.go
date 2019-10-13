@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/tendermint/tendermint/identypes"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -27,15 +28,15 @@ import (
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
-var count = 0
-
-func lis(flag string) {
-	if flag == "flag" {
-		count++
-		time.Sleep(time.Second)
-		fmt.Println("接受跨片交易数量:", count)
-	}
-}
+//var count = 0
+//
+//func lis(flag string) {
+//	if flag == "flag" {
+//		count++
+//		time.Sleep(time.Second)
+//		fmt.Println("接受跨片交易数量:", count)
+//	}
+//}
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
@@ -166,6 +167,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		//	return
 		//} else {
 		//Now, fetch the RPCFunc and execute it.
+
 		rpcFunc := funcMap[request.Method]
 		if rpcFunc == nil || rpcFunc.ws {
 			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
@@ -174,6 +176,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 
 		ctx := &types.Context{JSONReq: &request, HTTPReq: r}
 		args := []reflect.Value{reflect.ValueOf(ctx)}
+		//在这里先做测试，看看效果。如果不行的话再将发送的信息进行条条处理
+
+
 		if len(request.Params) > 0 {
 			fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
 			if err != nil {
@@ -184,7 +189,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		}
 
 		returns := rpcFunc.f.Call(args)
-		fmt.Println("method:", request.Method)
+		//fmt.Println("method:", request.Method)
 		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
@@ -686,6 +691,58 @@ func Send2TEN2(ShardIp string, tx1 types.RPCRequest) {
 }
 
 // Read from the socket and subscribe to or unsubscribe from events
+func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
+	//fmt.Println("单条交易内容",tx)
+	res, _ := json.Marshal(tx)//单条交易进行封装
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	rawParamsJSON := json.RawMessage(paramsJSON)//这就是交易封装后的内容，传递到下一层进行处理
+	rc := types.RPCRequest{
+		JSONRPC:  "2.0",
+		Sender:   tx.Sender,
+		Receiver: tx.Receiver,
+		ID:       types.JSONRPCStringID("package"),
+		Method:   "broadcast_tx_commit",
+		Params:   rawParamsJSON,
+	}
+	//fmt.Println("单条交易",rc)
+	//解析出单个交易进行单个交易模式处理
+	rpcFunc := wsc.funcMap[request.Method]
+	if rpcFunc == nil {
+		wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+		return
+	}
+
+	ctx := &types.Context{JSONReq: &rc, WSConn: wsc}
+	args := []reflect.Value{reflect.ValueOf(ctx)}
+	if len(rc.Params) > 0 {
+		fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, rc.Params)
+		if err != nil {
+			wsc.WriteRPCResponse(types.RPCInternalError(rc.ID, errors.Wrap(err, "Error converting json params to arguments")))
+			return
+		}
+		args = append(args, fnArgs...)
+	}
+
+	returns := rpcFunc.f.Call(args)
+
+	// TODO: Need to encode args/returns to string if we want to log them
+	wsc.Logger.Info("WSJSONRPC", "method", rc.Method)
+
+	result, err := unreflectResult(returns)
+	if err != nil {
+		wsc.WriteRPCResponse(types.RPCInternalError(rc.ID, err))
+		return
+	}
+
+	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, rc.ID, result))
+
+
+}
 
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
@@ -757,7 +814,23 @@ func (wsc *wsConnection) readRoutine() {
 			//	}
 			//	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
 			//}else{
-			go lis(request.Sender)
+			if request.Sender=="flag"{
+				//解析包
+				var pack_info json.RawMessage
+				pack_info = request.Params
+				var m []identypes.TX
+				err := json.Unmarshal(pack_info,&m)
+				if err != nil {
+					wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
+					continue
+				}
+				for i:=range m{
+					//解析成一条条交易并且封装成json让别人解析
+					go wsc.handlerTx(request,m[i])
+					//go lis(request.Sender)
+				}
+			}
+
 			rpcFunc := wsc.funcMap[request.Method]
 			if rpcFunc == nil {
 				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))

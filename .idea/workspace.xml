@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="Merge branch 'master' of https://github.com/LinStark/tendermint&#10;&#10;# Conflicts:&#10;#&#9;consensus/state.go&#10;#&#9;line/line.go&#10;#&#9;state/execution.go">
+    <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/tendermint/commands/run_node.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/tendermint/commands/run_node.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/statistics.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/statistics.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/transacter.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/transacter.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -153,17 +146,21 @@
       </map>
     </option>
   </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Merge branch 'master' of https://github.com/LinStark/tendermint&#10;&#10;# Conflicts:&#10;#&#9;consensus/state.go&#10;#&#9;line/line.go&#10;#&#9;state/execution.go" />
+    <option name="LAST_COMMIT_MESSAGE" value="Merge branch 'master' of https://github.com/LinStark/tendermint&#10;&#10;# Conflicts:&#10;#&#9;consensus/state.go&#10;#&#9;line/line.go&#10;#&#9;state/execution.go" />
+  </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/tools/tm-bench/transacter.go</url>
-          <line>178</line>
+          <line>177</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/tools/tm-bench/transacter.go</url>
-          <line>408</line>
+          <line>406</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
@@ -183,7 +180,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/node/node.go</url>
-          <line>832</line>
+          <line>830</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
@@ -203,7 +200,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/consensus/state.go</url>
-          <line>191</line>
+          <line>190</line>
           <option name="timeStamp" value="20" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
@@ -233,7 +230,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/state/execution.go</url>
-          <line>493</line>
+          <line>544</line>
           <option name="timeStamp" value="37" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
