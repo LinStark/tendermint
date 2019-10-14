@@ -7,10 +7,6 @@
       <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/state/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/statistics.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/statistics.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/transacter.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/transacter.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -205,7 +201,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/consensus/state.go</url>
-          <line>190</line>
+          <line>189</line>
           <option name="timeStamp" value="20" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">

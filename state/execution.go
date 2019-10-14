@@ -686,7 +686,7 @@ func updateState(
 
 	// Update the validator set with the latest abciResponses.
 	flag := false
-	if height%100 == 0 {
+	if height%10000 == 0 {
 		flag = true
 	}
 	// rand.Seed(time.Now().Unix())

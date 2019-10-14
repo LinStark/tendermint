@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"runtime/debug"
@@ -17,7 +16,7 @@ import (
 
 	//	"strings"
 	"crypto/sha256"
-	//"io/ioutil"
+	"io/ioutil"
 	"os"
 	"syscall"
 
@@ -1563,13 +1562,10 @@ func Get(key string) (value string) {
 	}
 	return value
 }
-//发往哪里呢?
 func Sendtxs(cptxs []tp.TX) []tp.TX {
-	c,i :=myline.UseConnect("E","localhost")
-
-	//client := &http.Client{}
-	//port := [3]string{"26657", "36657", "46657"}
-	//SiteIp := ""
+	client := &http.Client{}
+	port := [3]string{"26657", "36657", "46657"}
+	SiteIp := ""
 	var dID [][32]byte
 	for i := 0; i < len(cptxs); i++ {
 		SiteIp = Get(cptxs[i].Receiver)
@@ -1644,8 +1640,6 @@ func Sendcptx(tx tp.TX, flag int) {
 
 	res, _ := json.Marshal(tx)
 	fmt.Println("-----------------sendcheckpointtx-----------------------")
-	//client := &http.Client{}
-	//requestBody := new(bytes.Buffer)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 	if err != nil {
 		fmt.Printf("failed to encode params: %v\n", err)
@@ -1659,27 +1653,7 @@ func Sendcptx(tx tp.TX, flag int) {
 		Params:  rawParamsJSON,
 	}
 	c,_:=myline.UseConnect("E","localhost")
-	//json.NewEncoder(requestBody).Encode(rc)
-	//port := [3]string{"26657", "36657", "46657"}
-	//url := "http://localhost:" + port[0]
-	//req, err := http.NewRequest("POST", url, requestBody)
-	//req.Header.Set("Content-Type", "application/json")
 	c.WriteJSON(rc)
-	//if err != nil {
-	//	panic(err)
-	//}
-	////处理返回结果
-	//response, _ := client.Do(req)
-	//
-	////将结果定位到标准输出 也可以直接打印出来 或者定位到其他地方进行相应的处理
-	//stdout := os.Stdout
-	//_, err = io.Copy(stdout, response.Body)
-	//
-	////返回的状态码
-	//status := response.StatusCode
-	//
-	//fmt.Println(status)
-
 }
 
 //-------------------------------------------------------------------------
