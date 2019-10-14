@@ -14,7 +14,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
-	//myline "github.com/tendermint/tendermint/line"
 )
 
 var logger = log.NewNopLogger()

@@ -1,15 +1,12 @@
 package state
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"net"
-	"net/http"
-	"os"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -17,11 +14,9 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
+	myline "github.com/tendermint/tendermint/line"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	useetcd "github.com/tendermint/tendermint/useetcd"
-
-	myline "github.com/tendermint/tendermint/line"
 )
 
 //-----------------------------------------------------------------------------
@@ -363,14 +358,7 @@ func (blockExec *BlockExecutor) GetAllTxs() []tp.TX {
 	cpTxs := blockExec.mempool.GetAllTxs()
 	return cpTxs
 }
-func (blockExec *BlockExecutor) send(num int, shard_send [4][]tp.TX, client *http.Client, i int) {
-	if num > 0 {
-		//flag_conn[i]=true
-		for j := 0; j < num; j++ {
-			blockExec.Sendtxs(shard_send[i][j], j%3, client, i) //并发发送
-		}
-	}
-}
+
 func (blockExec *BlockExecutor) SendRelayTxs( /*line *myline.Line,*/ txs []tp.TX) {
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
@@ -468,7 +456,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []
 		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	var tx_package []tp.TX
-	//client := &http.Client{}
+
 	for i := 0; i < len(shard_send); i++ {
 		if shard_send[i] != nil {
 			num := len(shard_send[i])
@@ -479,80 +467,6 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []
 	}
 }
 
-//---------------------------------------------------------------------------
-//ETCD
-
-func (blockExec *BlockExecutor) Sendtxs( /*line *myline.Line,*/ tx tp.TX, flag int, client *http.Client, i int) {
-	SiteIp := ""
-	e := useetcd.NewEtcd()
-	var c1 *websocket.Conn
-	var rnd int
-	//var conn *websocket.Conn
-	//fmt.Println("tx.Sender", tx.Sender, "tx.Receiver", tx.Receiver, "Txtype", tx.Txtype)
-	if tx.Txtype == "addtx" {
-		SiteIp = string(e.Query(tx.Sender))
-		//c, _, err2 := myline.Connect(SiteIp)
-		//if(err2 != nil){
-		//	fmt.Println(err2)
-		//}
-
-		c1, rnd = myline.UseConnect(tx.Sender, SiteIp)
-		i = int(tx.Sender[0]) - 65
-		//fmt.Println(SiteIp)
-		//conn=c.conns[tx.Sender][0]
-	} else {
-		SiteIp = string(e.Query(tx.Receiver))
-		//c, _, err2 := myline.Connect(SiteIp)
-		//if(err2 != nil){
-		//	fmt.Println(err2)
-		//}
-		//blockExec.Send4TEN(tx, c, flag, client,i)
-		c1, rnd = myline.UseConnect(tx.Receiver, SiteIp)
-		i = int(tx.Receiver[0]) - 65
-		//conn=c.conns[tx.Receiver][0]
-	}
-	time.Sleep(time.Millisecond * 100)
-
-	go blockExec.Send4TEN(tx, c1, flag, client, i, rnd)
-	//blockExec.Send2TEN(tx, SiteIp, flag, client)
-	//line.Test()
-	//fmt.Println(SiteIp)
-
-}
-
-//替代etcd，加了etcd时长变长，容易出现超时错误
-/*
-func Get(key string)(value string){
-
-	A := "192.168.5.56"
-	B := "192.168.5.57"
-	C := "192.168.5.58"
-	D := "192.168.5.60"
-	if key == "A"{
-		value = A
-	}else if key=="B"{
-		value = B
-	}else if key=="C"{
-		value = C
-	}else {
-		value = D
-	}
-	return value
-}
-func (blockExec *BlockExecutor) Sendtxs(tx tp.TX,flag int,client *http.Client){
-	SiteIp:=""
-	if tx.Txtype=="addtx"{
-		SiteIp = Get(tx.Sender)
-	} else{
-		SiteIp = Get(tx.Receiver)
-	}
-	res, _ := json.Marshal(tx)
-	fmt.Println(string(res))
-
-	blockExec.Send2TEN(tx,SiteIp,flag,client)
-
-}
-*/
 type RPCRequest struct {
 	JSONRPC  string          `json:"jsonrpc"`
 	ID       string          `json:"id"`
@@ -561,238 +475,6 @@ type RPCRequest struct {
 	Sender   string          `json:"Sender"`   //添加发送者
 	Receiver string          `json:"Receiver"` //添加接受者
 	Flag     int             `json:"Flag"`
-}
-
-
-func (blockExec *BlockExecutor) Send2TEN( /*line *myline.Line,*/ tx tp.TX, ip string, flag int, client *http.Client) {
-	//port:=[]string{"26657","36657","46657"}
-	//e := useetcd.NewEtcd()
-	//if tx.Txtype == "addtx" {
-	//	//fmt.Println("现在我要发送addtx出去")
-	//}
-	//c, _, err := connect(ip)
-	//if err != nil {
-	//	fmt.Println("connnection fail:",ip)
-	//	return
-	//}
-
-	Sender := tx.Sender
-	Receiver := tx.Receiver
-
-	//fmt.Println("receiver:", Receiver)
-	res, _ := json.Marshal(tx)
-	requestBody := new(bytes.Buffer)
-	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
-	if err != nil {
-		fmt.Printf("failed to encode params: %v\n", err)
-		os.Exit(1)
-	}
-
-	rawParamsJSON := json.RawMessage(paramsJSON)
-	rc := &rpctypes.RPCRequest{
-		JSONRPC:  "2.0",
-		Sender:   Sender,
-		Receiver: Receiver,
-		Flag:     flag,
-		Method:   "broadcast_tx_commit",
-		Params:   rawParamsJSON,
-	}
-	//err1:=s.WriteJSON(rc)
-	//
-	//if err1!=nil{
-	//	s.Close()
-	//	return
-	//}
-	//s.Close()
-	//go func(*websocket.Conn){
-	//	_, p, err := c.ReadMessage()
-	//	if err!=nil{
-	//		fmt.Println("connection fail read")
-	//		c.Close()
-	//		return
-	//	}
-	//	fmt.Println(string(p))
-	//}(c)
-	//line.SendMessage(rc,Receiver)
-	//fmt.Println("sender:", rc.Sender)
-	//fmt.Println("发送的方法:", rc.Method)
-	json.NewEncoder(requestBody).Encode(rc)
-	url := "http://" + ip
-	//fmt.Println(url)
-	req, err := http.NewRequest("POST", url, requestBody)
-	req.Header.Set("Content-Type", "application/json")
-
-	if err != nil {
-		panic(err)
-	}
-	_, _ = client.Do(req)
-	//res1.Body.Close()
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	//body, _ := ioutil.ReadAll(response.Body)
-	//var f interface{}
-	//jserror := json.Unmarshal(body, &f)
-	//if jserror != nil {
-	//	fmt.Println(jserror)
-	//}
-	//m := f.(map[string]interface{})
-	//for k, v := range m {
-	//	if k == "error" {
-	//		md, _ := v.(map[string]interface{})
-	//		if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
-	//			blockExec.RemoveFromRelaytxDB(tx)
-	//		}
-	//	}
-	//}
-
-}
-func (blockExec *BlockExecutor) Send4TEN( /*line *myline.Line,*/ tx tp.TX, c *websocket.Conn, flag int, client *http.Client, i int, rnd int) {
-	//port:=[]string{"26657","36657","46657"}
-	//e := useetcd.NewEtcd()
-	//if tx.Txtype == "addtx" {
-	//	fmt.Println("现在我要发送addtx出去")
-	//}
-
-	//c, _, err := connect(ip)
-	//if err != nil {
-	//	fmt.Println("connnection fail:",ip)
-	//	return
-	//}
-
-	//Sender := tx.Sender
-	//Receiver := tx.Receiver
-
-	//fmt.Println("receiver:", Receiver)
-	res, _ := json.Marshal(tx)
-	//requestBody := new(bytes.Buffer)
-	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
-	if err != nil {
-		fmt.Printf("failed to encode params: %v\n", err)
-		os.Exit(1)
-	}
-	c.SetPingHandler(func(message string) error {
-		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
-		if err == websocket.ErrCloseSent {
-			return nil
-		} else if e, ok := err.(net.Error); ok && e.Temporary() {
-			return nil
-		}
-		return err
-	})
-	c.SetWriteDeadline(time.Now().Add(sendTimeout))
-	rawParamsJSON := json.RawMessage(paramsJSON)
-	//rc := &rpctypes.RPCRequest{
-	//	JSONRPC:  "2.0",
-	//	Sender:   Sender,
-	//	Receiver: Receiver,
-	//	Flag:     flag,
-	//	Method:   "broadcast_tx_commit",
-	//	Params:   rawParamsJSON,
-	//}
-	//fmt.Println("进行到这里")
-	//time.Sleep(time.Microsecond*100).
-	//for{
-	//	if flag_conn[i]==true{
-	//		fmt.Println("等待",i,"释放资源")
-	//		continue
-	//	}else{
-	//
-	//		break
-	//	}
-	//}
-
-	//flag_conn[i]=true
-	time1 := time.Now()
-	err1 := c.WriteJSON(rpctypes.RPCRequest{
-		JSONRPC: "2.0",
-		Sender:  "flag",
-		ID:      rpctypes.JSONRPCStringID("relay"),
-		Method:  "broadcast_tx_commit",
-		Params:  rawParamsJSON,
-	})
-	time2 := time.Now().Sub(time1)
-	fmt.Println("send a tx use time:", time2)
-	//time.Sleep(time.Second*100)
-	//time.Sleep(time.Millisecond*10)
-	//fmt.Println(i,"释放资源")
-	//flag_conn[i]=false
-	if err1 != nil {
-		fmt.Println("错误！！！")
-		fmt.Println(err1)
-
-		return
-	}
-	//time.Sleep(time.Millisecond*100)
-	myline.Flag_conn[i][rnd] = false //释放资源
-	//fmt.Println("释放",string(i+65),"资源第",rnd,"条连接")
-
-	//c.Close()
-	//fmt.Println("关闭连接")
-	//
-	//s.Close()
-	//go func(*websocket.Conn){
-	//	_, p, err := c.ReadMessage()
-	//	if err!=nil{
-	//		fmt.Println("connection fail read")
-	//		c.Close()
-	//		return
-	//	}
-	//	fmt.Println(string(p))
-	//}(c)
-	//line.SendMessage(rc,Receiver)
-	//fmt.Println("sender:", rc.Sender)
-	//fmt.Println("发送的方法:", rc.Method)
-	//json.NewEncoder(requestBody).Encode(rc)
-	//url := "http://" + ip
-	//fmt.Println(url)
-	//req, err := http.NewRequest("POST", url, requestBody)
-	//req.Header.Set("Content-Type", "application/json")
-	//
-	//if err != nil {
-	//	panic(err)
-	//}
-	//response, err := client.Do(req)
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	//body, _ := ioutil.ReadAll(response.Body)
-	//var f interface{}
-	//jserror := json.Unmarshal(body, &f)
-	//if jserror != nil {
-	//	fmt.Println(jserror)
-	//}
-	//m := f.(map[string]interface{})
-	//for k, v := range m {
-	//	if k == "error" {
-	//		md, _ := v.(map[string]interface{})
-	//		if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
-	//			blockExec.RemoveFromRelaytxDB(tx)
-	//		}
-	//	}
-	//}
-
-}
-
-func (blockExec *BlockExecutor) Send3TEN(line *myline.Line, tx tp.TX, ip string, flag int, client *http.Client) {
-	//port:=[]string{"26657","36657","46657"}
-	//e := useetcd.NewEtcd()
-	if tx.Txtype == "addtx" {
-		fmt.Println("现在我要发送addtx出去")
-	}
-
-	Sender := tx.Sender
-	Receiver := tx.Receiver
-	fmt.Println("receiver:", Receiver)
-	res, _ := json.Marshal(tx)
-	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
-	if err != nil {
-		fmt.Printf("failed to encode params: %v\n", err)
-		os.Exit(1)
-	}
-	rawParamsJSON := json.RawMessage(paramsJSON)
-	line.SendMessageTrans(rawParamsJSON, Receiver, Sender)
-
 }
 
 //----------------------------------------------------------------------------

@@ -66,14 +66,14 @@ func calculateStatistics(
 		//fmt.Println("blockMeta.Header.Time",blockMeta.Header.Time)
 		//fmt.Println("blockMeta.Header.Height",blockMeta.Header.Height)
 		// check if block was created after timeStart
-		//if blockMeta.Header.Time.Before(timeStart) {
-		//	break
-		//}
-		//
-		//// check if block was created before timeEnd
-		//if blockMeta.Header.Time.After(timeEnd) {
-		//	continue
-		//}
+		if blockMeta.Header.Time.Before(timeStart) {
+			break
+		}
+
+		// check if block was created before timeEnd
+		if blockMeta.Header.Time.After(timeEnd) {
+			continue
+		}
 		sec := secondsSinceTimeStart(timeStart, blockMeta.Header.Time)
 
 		// increase number of blocks for that second

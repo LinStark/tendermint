@@ -45,7 +45,7 @@ func newline() *Line {
 	endpoints.target["B"] = []string{"192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657"}
 	endpoints.target["C"] = []string{"192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657"}
 	endpoints.target["D"] = []string{"192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657"}
-
+	endpoints.target["E"]=[]string{"localhost:36657"}
 	l1 := NewLine(endpoints.target)
 
 	return l1
@@ -69,8 +69,6 @@ var l *Line
 //var cn1 *Cn
 func begin() {
 	if err := l.Start(); err != nil {
-		fmt.Println("连接错误！")
-		fmt.Println(err)
 		return
 	}
 
@@ -119,23 +117,13 @@ func Find_conns(flag int) int {
 }
 
 func UseConnect(key string, ip string) (*websocket.Conn, int) {
-	//cn1.mu.Lock()
-	//var j int
-	//rand.Seed(time.Now().Unix())
-	//rnd := rand.Intn(4)
-	//for i,siteip := range l.target[key]{
-	//	if siteip==ip{
-	//		j = i
-	//	}else{
-	//		j = 0
-	//	}
-	//}
-	//fmt.Println(j)
-	//fmt.Println(l.target[key][j],"connection","j:",j)
+	if ip=="localhost"{
+		c:=l.conns["E"][0]
+		return c,0
+	}
 	flag := int(key[0]) - 65
 	rnd := Find_conns(flag)
 	Flag_conn[flag][rnd] = true
-	//fmt.Println("使用了资源",key,"的第",rnd+1,"条连接")
 	c := l.conns[key][rnd]
 	return c, rnd
 }
@@ -164,19 +152,22 @@ func NewLine(target map[string][]string) *Line {
 	}
 }
 
-//func (l *Line)Connect_target(key string)*websocket.Conn{
-//	e:=useetcd.NewEtcd()
-//	ip := string(e.Query(key))
-//	l.target[key][0]=ip
-//	c,_,err:=l.connect(ip)
-//	if err != nil {
-//		return nil
-//	}
-//	return c
-//}
-//建立连接数组
+func (l *Line)ReStart(ip string,shard string,i int){
+	fmt.Println("连接出错,等待2s自动重连", ip)
+	time.Sleep(time.Second*2)
+	c, _, err :=Connect(ip)
+	if err != nil {
+		fmt.Println(err)
+		go l.ReStart(ip,shard,i)
+		return
+	}
+	l.conns[shard][i] = c
+	go receiveloop(c, shard, i)
+	return
+
+}
 func (l *Line) Start() error {
-	time.Sleep(time.Second * 20)
+	//time.Sleep(time.Second * 20)
 	for shard := range l.target {
 		l.conns[shard] = make([]*websocket.Conn, len(l.target[shard]))
 
@@ -184,11 +175,10 @@ func (l *Line) Start() error {
 
 			c, _, err := l.connect(ip)
 			if err != nil {
-				fmt.Println("连接出错:", ip)
-				return err
+				go l.ReStart(ip,shard,i)
+				continue
 			}
 			l.conns[shard][i] = c
-			fmt.Println("连接成功！！")
 			go receiveloop(c, shard, i)
 		}
 	}
