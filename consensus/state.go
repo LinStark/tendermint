@@ -1652,7 +1652,7 @@ func Sendcptx(tx tp.TX, flag int) {
 		Method:  "broadcast_tx_commit",
 		Params:  rawParamsJSON,
 	}
-	c,_:=myline.UseConnect("E","localhost")
+	c,_:=myline.UseConnect("Localhost","localhost")
 	c.WriteJSON(rc)
 }
 

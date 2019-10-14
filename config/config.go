@@ -67,6 +67,7 @@ type Config struct {
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	Shard           int
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -498,6 +499,7 @@ type P2PConfig struct {
 	// FUzz connection
 	TestFuzz       bool            `mapstructure:"test_fuzz"`
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
+	Shard int                      `mapstructure:"shard_count"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -854,6 +856,8 @@ type InstrumentationConfig struct {
 
 	// Instrumentation namespace.
 	Namespace string `mapstructure:"namespace"`
+
+	Shard int `mapstructure:"shard_count"`
 }
 
 // DefaultInstrumentationConfig returns a default configuration for metrics

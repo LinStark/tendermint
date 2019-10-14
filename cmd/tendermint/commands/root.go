@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cli"
 	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
 	"github.com/tendermint/tendermint/libs/log"
+	myline "github.com/tendermint/tendermint/line"
 )
 
 var (
@@ -30,10 +31,12 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 // sets up the Tendermint root and ensures that the root exists
 func ParseConfig() (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
+	conf.Instrumentation.Shard=0
 	err := viper.Unmarshal(conf)
 	if err != nil {
 		return nil, err
 	}
+	myline.Shard=4
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err = conf.ValidateBasic(); err != nil {

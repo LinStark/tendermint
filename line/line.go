@@ -6,14 +6,18 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+	useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
 var Flag_conn map[int][]bool
-
+var Shard int
+var endpoints node
+var wg sync.WaitGroup
 //var Count map[int][]int
 //func Count_int(){
 //	Count=make(map[int][]int,4)
@@ -25,12 +29,12 @@ var Flag_conn map[int][]bool
 //	}
 //}
 func Flag_init() { //初始化链接没使用则为false
-	Flag_conn = make(map[int][]bool, 4) //初始设置4个分片
-	for i := 0; i < 5; i++ {
-		Flag_conn[i] = make([]bool, 11)
+	Flag_conn = make(map[int][]bool, Shard) //初始设置4个分片
+	for i := 0; i < Shard+1; i++ {
+		Flag_conn[i] = make([]bool, 10)
 		for j := 0; j < 10; j++ {
-			if(i==4){
-				Flag_conn[i][0]=true
+			if(i==Shard){
+				Flag_conn[i][0]=false
 				break
 			}
 			Flag_conn[i][j] = false
@@ -38,18 +42,68 @@ func Flag_init() { //初始化链接没使用则为false
 		}
 	}
 }
-func newline() *Line {
-	endpoints := &node{
-		target: make(map[string][]string, 16),
+func Get(key string) (value string) {
+
+	A := "192.168.5.56"
+	B := "192.168.5.57"
+	C := "192.168.5.58"
+	D := "192.168.5.60"
+	E := "192.168.5.61"
+	F := "192.168.5.62"
+	G := "192.168.5.63"
+	H := "192.168.5.66"
+	if key == "A" {
+		value = A
+	} else if key == "B" {
+		value = B
+	} else if key == "C" {
+		value = C
+	} else if key == "D"{
+		value = D
+	} else if key == "E"{
+		value = E
+	} else if key == "F"{
+		value = F
+	} else if key == "G"{
+		value = G
+	} else if key == "H"{
+		value = H
 	}
+	return value
+}
+func Shard_init(){
+	Shard=0
+}
+func judge_etcd(e *useetcd.Use_Etcd,i int){
+	var ip string
+	for {
+		ip=string(e.Query(string(i+65)))
+		if (ip == "") {
+			fmt.Println("睡觉～～～")
+			time.Sleep(time.Second * 2)
+			continue
+		}else{
+			fmt.Println("ip=",ip)
+			break
+		}
+	}
+	for j:=0;j<10;j++{
+		endpoints.target[string(i+65)] = append(endpoints.target[string(i+65)], ip)
+	}
+	defer wg.Done()
+	return
+}
+func newline() *Line {
 
-	endpoints.target["A"] = []string{"192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657", "192.168.5.56:36657"}
-	endpoints.target["B"] = []string{"192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657", "192.168.5.57:36657"}
-	endpoints.target["C"] = []string{"192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657", "192.168.5.58:36657"}
-	endpoints.target["D"] = []string{"192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657", "192.168.5.60:36657"}
-	endpoints.target["E"] = []string{"tm_node1:26657"}
+	endpoints.target=make(map[string][]string, Shard)
+	e :=useetcd.NewEtcd()
+	wg.Add(Shard)
+	for i:=0;i<Shard;i++{
+		go judge_etcd(e,i)
+	}
+	endpoints.target["Localhost"]=[]string{"tm_node1:26657"}
+	wg.Wait()
 	l1 := NewLine(endpoints.target)
-
 	return l1
 }
 
@@ -75,10 +129,25 @@ func begin() {
 	}
 
 }
-func init() {
+func figure_Shard(){
+	for {
+		if (Shard == 0) {
+			fmt.Println("等待")
+			time.Sleep(time.Second*1)
+			continue
+		}else{
+			break
+		}
+	}
+	fmt.Println("出来了！！shard，shard=",Shard)
 	Flag_init()
 	l = newline()
 	go begin()
+}
+func init() {
+	Shard_init()
+	go figure_Shard()
+
 }
 func receiveloop(conn *websocket.Conn, shard string, i int) {
 	for {
@@ -107,7 +176,7 @@ func receiveloop(conn *websocket.Conn, shard string, i int) {
 func Find_conns(flag int) int {
 	for {
 		//rand.Seed(time.Now().Unix())
-		rnd := rand.Intn(11)
+		rnd := rand.Intn(10)
 		if Flag_conn[flag][rnd] == false {
 			return rnd
 		}
@@ -120,7 +189,7 @@ func Find_conns(flag int) int {
 
 func UseConnect(key string, ip string) (*websocket.Conn, int) {
 	if ip=="localhost"{
-		c:=l.conns["E"][0]
+		c:=l.conns["Localhost"][0]
 		return c,0
 	}
 	flag := int(key[0]) - 65
@@ -174,7 +243,7 @@ func (l *Line) Start() error {
 		l.conns[shard] = make([]*websocket.Conn, len(l.target[shard]))
 
 		for i, ip := range l.target[shard] {
-
+			fmt.Println("连接",ip)
 			c, _, err := l.connect(ip)
 			if err != nil {
 				go l.ReStart(ip,shard,i)

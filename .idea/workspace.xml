@@ -4,9 +4,12 @@
     <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/toml.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/toml.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config/toml_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/toml_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -68,7 +71,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestNodeStartStop in github.com/tendermint/tendermint/node">
+  <component name="RunManager" selected="Go Test.toml_test.go">
     <configuration name="TestApplyBlock in github.com/tendermint/tendermint/state" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="tendermint" />
       <working_directory value="$PROJECT_DIR$/state" />
@@ -91,16 +94,6 @@
       <pattern value="^TestNodeStartStop$" />
       <method v="2" />
     </configuration>
-    <configuration name="execution_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="tendermint" />
-      <working_directory value="$PROJECT_DIR$/state" />
-      <framework value="gotest" />
-      <kind value="FILE" />
-      <package value="github.com/tendermint/tendermint" />
-      <directory value="$PROJECT_DIR$/" />
-      <filePath value="$PROJECT_DIR$/state/execution_test.go" />
-      <method v="2" />
-    </configuration>
     <configuration name="node_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="tendermint" />
       <working_directory value="$PROJECT_DIR$/node" />
@@ -121,13 +114,23 @@
       <filePath value="$PROJECT_DIR$/consensus/reactor_test.go" />
       <method v="2" />
     </configuration>
+    <configuration name="toml_test.go" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="tendermint" />
+      <working_directory value="$PROJECT_DIR$/config" />
+      <framework value="gotest" />
+      <kind value="FILE" />
+      <package value="github.com/tendermint/tendermint" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/config/toml_test.go" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.toml_test.go" />
         <item itemvalue="Go Test.TestNodeStartStop in github.com/tendermint/tendermint/node" />
         <item itemvalue="Go Test.reactor_test.go" />
         <item itemvalue="Go Test.node_test.go" />
         <item itemvalue="Go Test.TestApplyBlock in github.com/tendermint/tendermint/state" />
-        <item itemvalue="Go Test.execution_test.go" />
       </list>
     </recent_temporary>
   </component>
