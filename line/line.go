@@ -14,7 +14,7 @@ import (
 	useetcd "github.com/tendermint/tendermint/useetcd"
 )
 
-var Flag_conn map[int][]bool
+var Flag_conn map[string][]bool
 var Shard int
 var endpoints node
 var wg sync.WaitGroup
@@ -29,16 +29,19 @@ var wg sync.WaitGroup
 //	}
 //}
 func Flag_init() { //初始化链接没使用则为false
-	Flag_conn = make(map[int][]bool, Shard) //初始设置4个分片
+	Flag_conn = make(map[string][]bool, Shard) //初始设置4个分片
 	for i := 0; i < Shard+1; i++ {
-		Flag_conn[i] = make([]bool, 10)
-		for j := 0; j < 10; j++ {
-			if(i==Shard){
-				Flag_conn[i][0]=false
-				break
-			}
-			Flag_conn[i][j] = false
+		if(i==Shard){
+			Flag_conn["Localhost"] = make([]bool, 10)
+			Flag_conn["Localhost"][0]=false
+			break
+		}
 
+		name := string(i+65)
+		//fmt.Println("初始化效果",name)
+		Flag_conn[name] = make([]bool, 10)
+		for j := 0; j < 10; j++ {
+			Flag_conn[name][j] = false
 		}
 	}
 }
@@ -132,14 +135,14 @@ func begin() {
 func figure_Shard(){
 	for {
 		if (Shard == 0) {
-			fmt.Println("等待")
+			//fmt.Println("等待")
 			time.Sleep(time.Second*1)
 			continue
 		}else{
 			break
 		}
 	}
-	fmt.Println("出来了！！shard，shard=",Shard)
+	//fmt.Println("出来了！！shard，shard=",Shard)
 	Flag_init()
 	l = newline()
 	go begin()
@@ -173,7 +176,7 @@ func receiveloop(conn *websocket.Conn, shard string, i int) {
 	}
 }
 
-func Find_conns(flag int) int {
+func Find_conns(flag string) int {
 	for {
 		//rand.Seed(time.Now().Unix())
 		rnd := rand.Intn(10)
@@ -192,9 +195,9 @@ func UseConnect(key string, ip string) (*websocket.Conn, int) {
 		c:=l.conns["Localhost"][0]
 		return c,0
 	}
-	flag := int(key[0]) - 65
-	rnd := Find_conns(flag)
-	Flag_conn[flag][rnd] = true
+
+	rnd := Find_conns(key)
+	Flag_conn[key][rnd] = true
 	c := l.conns[key][rnd]
 	return c, rnd
 }

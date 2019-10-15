@@ -4,12 +4,10 @@
     <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/toml.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/toml.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/toml_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/toml_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mempool/mempool.go" beforeDir="false" afterPath="$PROJECT_DIR$/mempool/mempool.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -241,6 +239,11 @@
           <url>file://$PROJECT_DIR$/tools/tm-bench/statistics.go</url>
           <line>2</line>
           <option name="timeStamp" value="39" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/line/line.go</url>
+          <line>79</line>
+          <option name="timeStamp" value="42" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

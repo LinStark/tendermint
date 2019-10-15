@@ -265,7 +265,7 @@ func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
 		if mem.rDB.relaytx[i].Tx.ID == tx.ID {
 			mem.rDB.relaytx = append(mem.rDB.relaytx[:i], mem.rDB.relaytx[i+1:]...)
 			i--
-			fmt.Println("succ add the rtx")
+			//fmt.Println("succ add the rtx")
 			break
 		}
 	}

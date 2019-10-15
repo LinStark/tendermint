@@ -345,7 +345,7 @@ func (blockExec *BlockExecutor) Add2RelaytxDB(tx tp.TX) {
 	blockExec.mempool.AddRelaytxDB(tx)
 }
 func (blockExec *BlockExecutor) RemoveFromRelaytxDB(tx tp.TX) {
-	fmt.Println("RemoveFromRelaytxDB")
+	//fmt.Println("RemoveFromRelaytxDB")
 	blockExec.mempool.RemoveRelaytxDB(tx)
 }
 func (blockExec *BlockExecutor) UpdateRelaytxDB() []tp.TX {
@@ -391,9 +391,11 @@ func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 	if num>0{
 		if tx_package[0].Txtype=="addtx"{
 			key=tx_package[0].Sender
+			//fmt.Println("发往分片",key)
 			c2,rnd = myline.UseConnect(key,"ip")
 		}else{
 			key=tx_package[0].Receiver
+			//fmt.Println("发往分片",key)
 			c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
@@ -441,7 +443,7 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 	}
 
 	//time.Sleep(time.Millisecond*100)
-	myline.Flag_conn[index][rnd] = false //释放资源
+	myline.Flag_conn[string(index+65)][rnd] = false //释放资源
 }
 
 func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []tp.TX) {

@@ -15,6 +15,7 @@ import (
 	"runtime/debug"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -27,8 +28,8 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
-
-//var count = 0
+var wg sync.WaitGroup
+var count = 0
 //
 //func lis(flag string) {
 //	if flag == "flag" {
@@ -692,6 +693,7 @@ func Send2TEN2(ShardIp string, tx1 types.RPCRequest) {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
+	time.Sleep(time.Millisecond*10)
 	//fmt.Println("单条交易内容",tx)
 	res, _ := json.Marshal(tx)//单条交易进行封装
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
@@ -711,9 +713,9 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	}
 	//fmt.Println("单条交易",rc)
 	//解析出单个交易进行单个交易模式处理
-	rpcFunc := wsc.funcMap[request.Method]
+	rpcFunc := wsc.funcMap[rc.Method]
 	if rpcFunc == nil {
-		wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+		fmt.Println(err)
 		return
 	}
 
@@ -722,7 +724,7 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	if len(rc.Params) > 0 {
 		fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, rc.Params)
 		if err != nil {
-			wsc.WriteRPCResponse(types.RPCInternalError(rc.ID, errors.Wrap(err, "Error converting json params to arguments")))
+			fmt.Println("返回错误信息",err)
 			return
 		}
 		args = append(args, fnArgs...)
@@ -731,16 +733,18 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	returns := rpcFunc.f.Call(args)
 
 	// TODO: Need to encode args/returns to string if we want to log them
-	wsc.Logger.Info("WSJSONRPC", "method", rc.Method)
+	//wsc.Logger.Info("WSJSONRPC", "method", rc.Method)
 
-	result, err := unreflectResult(returns)
+	a, err := unreflectResult(returns)
+	fmt.Println(a)
 	if err != nil {
-		wsc.WriteRPCResponse(types.RPCInternalError(rc.ID, err))
+		fmt.Println("返回错误信息",err)
 		return
 	}
-
-	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, rc.ID, result))
-
+	count=count+1
+	fmt.Println("处理了",count,"条交易")
+	return
+	//defer wg.Done()
 
 }
 
@@ -824,42 +828,54 @@ func (wsc *wsConnection) readRoutine() {
 					wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
 					continue
 				}
+				fmt.Println("收到relaytx的数量",len(m))
+
 				for i:=range m{
+					//wg.Add(1)
 					//解析成一条条交易并且封装成json让别人解析
 					go wsc.handlerTx(request,m[i])
 					//go lis(request.Sender)
+
 				}
-			}
-
-			rpcFunc := wsc.funcMap[request.Method]
-			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-				continue
-			}
-
-			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
-				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+				//wg.Wait()
+				fmt.Println("处理",count,"条交易")
+				count=0
+			}else{
+				rpcFunc := wsc.funcMap[request.Method]
+				if rpcFunc == nil {
+					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+					fmt.Println("返回错误信息1",err)
 					continue
 				}
-				args = append(args, fnArgs...)
+
+				ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+				args := []reflect.Value{reflect.ValueOf(ctx)}
+				if len(request.Params) > 0 {
+					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+					if err != nil {
+						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+						fmt.Println("返回错误信息1",err)
+						continue
+					}
+					args = append(args, fnArgs...)
+				}
+
+				returns := rpcFunc.f.Call(args)
+
+				// TODO: Need to encode args/returns to string if we want to log them
+				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
+				result, err := unreflectResult(returns)
+				if err != nil {
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+					fmt.Println("返回错误信息1",err)
+					continue
+				}
+
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 			}
 
-			returns := rpcFunc.f.Call(args)
 
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
-			result, err := unreflectResult(returns)
-			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
-				continue
-			}
-
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 			//}
 			//}if的终结点
 			//	fmt.Println("request.params")
