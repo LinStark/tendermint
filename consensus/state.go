@@ -3,7 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
-	"net/http"
+	"net"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -16,7 +16,6 @@ import (
 
 	//	"strings"
 	"crypto/sha256"
-	"io/ioutil"
 	"os"
 	"syscall"
 
@@ -959,15 +958,33 @@ func (cs *ConsensusState) isProposer(address []byte) bool {
 func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
-		e := useetcd.Use_Etcd{
-			Endpoints: []string{"192.168.5.56:2379"},
-		}
-		e.Update(getShard(), getPort())
+		e:=useetcd.NewEtcd()
+		e.Update(getShard(), getIp())
 	}
 }
 func getPort() string {
 	v, _ := syscall.Getenv("PORT")
 	return v
+}
+func getIp()string{
+	addrs, err := net.InterfaceAddrs()
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for _, address := range addrs {
+
+		// 检查ip地址判断是否回环地址
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+
+		}
+	}
+	return ""
 }
 func getShard() string {
 	v, _ := syscall.Getenv("TASKID")
@@ -1434,7 +1451,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	if !cs.isEqual(lastLeaderAddress) {
 		if cs.isLeader() {
 			e := useetcd.NewEtcd()
-			e.Update(getShard(), getPort())
+			e.Update(getShard(), getIp())
 			fmt.Println("------change the leader--------")
 			cs.reactorViaCheckpoint(height)
 		}
@@ -1562,57 +1579,28 @@ func Get(key string) (value string) {
 	}
 	return value
 }
-func Sendtxs(cptxs []tp.TX) []tp.TX {
-	client := &http.Client{}
-	port := [3]string{"26657", "36657", "46657"}
-	SiteIp := ""
-	var dID [][32]byte
-	for i := 0; i < len(cptxs); i++ {
-		SiteIp = Get(cptxs[i].Receiver)
-		res, _ := json.Marshal(cptxs[i])
-		requestBody := new(bytes.Buffer)
-		paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
-		if err != nil {
-			fmt.Printf("failed to encode params: %v\n", err)
-			os.Exit(1)
-		}
-		rawParamsJSON := json.RawMessage(paramsJSON)
-		rc := &RPCRequest{
-			JSONRPC: "2.0",
-			ID:      "tm-bench",
-			Method:  "broadcast_tx_commit",
-			Params:  rawParamsJSON,
-		}
-		json.NewEncoder(requestBody).Encode(rc)
-		url := "http://" + SiteIp + ":" + port[i%len(port)]
-		req, err := http.NewRequest("POST", url, requestBody)
-		if err != nil {
-			panic(err)
-		}
-		response, _ := client.Do(req)
-		body, _ := ioutil.ReadAll(response.Body)
-		var f interface{}
-		jserror := json.Unmarshal(body, &f)
-		if jserror != nil {
-			fmt.Println(jserror)
-		}
-		m := f.(map[string]interface{})
-		for k, v := range m {
-			if k == "error" {
-				md, _ := v.(map[string]interface{})
-				if md["data"] == "Error on broadcastTxCommit: Tx already exists in cache" {
-					dID = append(dID, cptxs[i].ID)
-				}
-			}
-		}
+func Send_message(tx tp.TX){
+	res, _ := json.Marshal(tx)
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
 	}
-	for i := 0; i < len(dID); i++ {
-		for j := 0; j < len(cptxs); j++ {
-			if cptxs[j].ID == dID[i] {
-				cptxs = append(cptxs[:j], cptxs[j+1:]...)
-				break
-			}
-		}
+	rawParamsJSON := json.RawMessage(paramsJSON)
+	rc := &RPCRequest{
+		JSONRPC: "2.0",
+		ID:      "tm-bench",
+		Method:  "broadcast_tx_async",
+		Params:  rawParamsJSON,
+	}
+	c,rnd := myline.UseConnect(tx.Receiver,"ip")
+	c.WriteJSON(rc)
+	myline.Flag_conn[tx.Receiver][rnd]=false
+}
+func Sendtxs(cptxs []tp.TX) []tp.TX {
+
+	for i := 0; i < len(cptxs); i++ {
+		go Send_message(cptxs[i])
 	}
 
 	return cptxs
@@ -1649,11 +1637,12 @@ func Sendcptx(tx tp.TX, flag int) {
 	rc := &RPCRequest{
 		JSONRPC: "2.0",
 		ID:      "tm-bench",
-		Method:  "broadcast_tx_commit",
+		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	}
 	c,_:=myline.UseConnect("Localhost","localhost")
 	c.WriteJSON(rc)
+	myline.Flag_conn["Localhost"][0]=false
 }
 
 //-------------------------------------------------------------------------

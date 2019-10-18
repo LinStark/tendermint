@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tp "github.com/tendermint/tendermint/identypes"
 )
-
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a
 // transaction doesn't exceeded the block size.
@@ -258,8 +257,8 @@ func  (mem *Mempool)AddRelaytxDB(tx  tp.TX){
 	rtx.Tx=tx
 	rtx.Height=0
 	mem.rDB.relaytx = append(mem.rDB.relaytx,rtx)
-
 }
+
 func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
 		if mem.rDB.relaytx[i].Tx.ID == tx.ID {

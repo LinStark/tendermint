@@ -18,48 +18,9 @@ func (e Use_Etcd)Update(key string,value string){
 	Endpoints:e.Endpoints,
 	DialKeepAliveTime:5*time.Second,
 	})
-
-	A:= "192.168.5.56"
-	B:= "192.168.5.57"
-	C:= "192.168.5.58"
-	D:= "192.168.5.60"
-	E:= "192.168.5.61"
-	F:= "192.168.5.62"
-	G:= "192.168.5.63"
-	H:= "192.168.5.66"
 	Value :=""
-	if(key=="A"){
-		Value=A+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="B"){
-		Value=B+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="C"){
-		Value=C+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="D"){
-		Value=D+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="E"){
-		Value=E+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="F"){
-		Value=F+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="G"){
-		Value=G+":"+value
-		fmt.Println(Value)
-	}
-	if(key=="H"){
-		Value=H+":"+value
-		fmt.Println(Value)
-	}
+	Value = value+":26657"
+
 	key = "/"+key
 	if err!=nil{
 	fmt.Println("conn failure!")
@@ -69,15 +30,15 @@ func (e Use_Etcd)Update(key string,value string){
 	_, err = cli.Put(ctx, key, Value)
 	cancel()
 	if err!=nil{
-	fmt.Println("put failed!")
-	return
+		fmt.Println("put failed!")
+		return
 	}
 	fmt.Println("put success!")
 	return
 }
 func NewEtcd()(*Use_Etcd){
 	return &Use_Etcd{
-		Endpoints: []string{"192.168.5.56:2379"},
+		Endpoints: []string{"etcd1:2379"},
 	}
 }
 

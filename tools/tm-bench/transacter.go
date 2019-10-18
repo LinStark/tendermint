@@ -240,40 +240,7 @@ func (t *transacter) sendLoop(connIndex int) {
 					logger.Error(err.Error())
 					return
 				}
-				//if err1 != nil {
-				//	err1 = errors.Wrap(err,
-				//		fmt.Sprintf("txs send failed on connection #%d", connIndex))
-				//	t.connsBroken[connIndex] = true
-				//	logger.Error(err.Error())
-				//	return
-				//}
-				/*
-							if(i%2==0){
-								atx:=sendaddtx(ntx)
 
-								paramsJSON, err = json.Marshal(map[string]interface{}{"tx": atx})
-
-								if err != nil {
-									fmt.Printf("failed to encode params: %v\n", err)
-									os.Exit(1)
-								}
-								rawParamsJSON = json.RawMessage(paramsJSON)
-
-								c.SetWriteDeadline(now.Add(sendTimeout))
-								err = c.WriteJSON(rpctypes.RPCRequest{
-									JSONRPC: "2.0",
-									ID:      rpctypes.JSONRPCStringID("tm-bench"),
-									Method:  t.BroadcastTxMethod,
-									Params:  rawParamsJSON,
-								})
-								if err != nil {
-									err = errors.Wrap(err,
-										fmt.Sprintf("txs send failed on connection #%d", connIndex))
-									t.connsBroken[connIndex] = true
-									logger.Error(err.Error())
-									return
-								}
-				}*/
 				// cache the time.Now() reads to save time.
 				if i%5 == 0 {
 					now = time.Now()

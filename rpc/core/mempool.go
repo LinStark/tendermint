@@ -192,10 +192,11 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 
 
 	subscriber := ctx.RemoteAddr()
-
+	fmt.Println("订阅者",subscriber,"数量",eventBus.NumClientSubscriptions(subscriber))
 	if eventBus.NumClients() >= config.MaxSubscriptionClients {
 		return nil, fmt.Errorf("max_subscription_clients %d reached", config.MaxSubscriptionClients)
 	} else if eventBus.NumClientSubscriptions(subscriber) >= config.MaxSubscriptionsPerClient {
+		fmt.Println("订阅者",subscriber,"数量",eventBus.NumClientSubscriptions(subscriber))
 		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", config.MaxSubscriptionsPerClient)
 	}
 

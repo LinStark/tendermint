@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
-
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
 // It exposes ApplyBlock(), which validates & executes the block, updates state w/ ABCI responses,
@@ -250,7 +249,8 @@ func (blockExec *BlockExecutor) CheckRelayTxs( /*line *myline.Line,*/ block *typ
 	fmt.Println("-------------Begin check Relay Txsc----------")
 	resendTxs := blockExec.UpdateRelaytxDB() //检查状态数据库，没有及时确认的relayTxs需要重新发送relaytxs
 	//client := &http.Client{}
-	var shard_send [4][]tp.TX
+	var shard_send [][]tp.TX
+	shard_send = make([][]tp.TX,myline.Shard)
 	//将需要跨片的交易按分片归类
 	for i := 0; i < len(resendTxs); i++ {
 		flag := int(resendTxs[i].Receiver[0]) - 65
@@ -262,7 +262,7 @@ func (blockExec *BlockExecutor) CheckRelayTxs( /*line *myline.Line,*/ block *typ
 		if shard_send[i] != nil {
 			num := len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的交易数量：", num)
+			fmt.Println("需要发送的CheckRelayTxs交易数量：", num)
 			go blockExec.Send_Package(num,i,tx_package)
 
 		}
@@ -336,6 +336,8 @@ func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,
 					}*/
 			}
 		}
+		fmt.Println("删除了",myline.Count,"条交易")
+		myline.Count= 0
 	}
 	return sendtxs, receivetxs
 }
@@ -362,7 +364,9 @@ func (blockExec *BlockExecutor) GetAllTxs() []tp.TX {
 func (blockExec *BlockExecutor) SendRelayTxs( /*line *myline.Line,*/ txs []tp.TX) {
 	fmt.Println("SendRelayTxs")
 	//暂时定义分片有4个
-	var shard_send [4][]tp.TX
+
+	var shard_send [][]tp.TX
+	shard_send = make([][]tp.TX,myline.Shard)
 	//将需要跨片的交易按分片归类
 	for i := 0; i < len(txs); i++ {
 		flag := int(txs[i].Receiver[0]) - 65
@@ -375,7 +379,7 @@ func (blockExec *BlockExecutor) SendRelayTxs( /*line *myline.Line,*/ txs []tp.TX
 		if shard_send[i] != nil {
 			num := len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的交易数量：", num)
+			fmt.Println("需要发送的relay交易数量：", num)
 			go blockExec.Send_Package(num,i,tx_package)
 
 		}
@@ -389,13 +393,16 @@ func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 	var key string
 	var index int
 	if num>0{
+
 		if tx_package[0].Txtype=="addtx"{
 			key=tx_package[0].Sender
+
 			//fmt.Println("发往分片",key)
 			c2,rnd = myline.UseConnect(key,"ip")
 		}else{
 			key=tx_package[0].Receiver
 			//fmt.Println("发往分片",key)
+			fmt.Println(key,len(tx_package))
 			c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
@@ -430,7 +437,7 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		JSONRPC: "2.0",
 		Sender:  "flag",
 		ID:      rpctypes.JSONRPCStringID("relay"),
-		Method:  "broadcast_tx_commit",
+		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	})
 	time2 := time.Now().Sub(time1)
@@ -450,7 +457,8 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []
 	//向发送来的分片中返回确认消息
 	fmt.Println("SendAddedRelayTxs")
 	//暂时定义分片有4个
-	var shard_send [4][]tp.TX
+	var shard_send [][]tp.TX
+	shard_send = make([][]tp.TX,myline.Shard)
 	//将需要跨片的交易按分片归类
 	for i := 0; i < len(txs); i++ {
 		flag := int(txs[i].Receiver[0]) - 65
@@ -463,7 +471,7 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []
 		if shard_send[i] != nil {
 			num := len(shard_send[i])
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的交易数量：", num)
+			fmt.Println("需要发送的addtx交易数量：", num)
 			go blockExec.Send_Package(num,i,tx_package)
 		}
 	}

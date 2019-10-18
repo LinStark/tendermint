@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,6 +30,10 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
+func getShard() string {
+	v, _ := syscall.Getenv("TASKID")
+	return v
+}
 func ParseConfig() (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
 	conf.Instrumentation.Shard=0
@@ -36,7 +41,8 @@ func ParseConfig() (*cfg.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	myline.Shard=4
+	myline.Shard=conf.Instrumentation.Shard
+	myline.Shard_name=getShard()
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err = conf.ValidateBasic(); err != nil {

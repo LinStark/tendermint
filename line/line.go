@@ -18,6 +18,8 @@ var Flag_conn map[string][]bool
 var Shard int
 var endpoints node
 var wg sync.WaitGroup
+var Count = 0
+var Shard_name = ""
 //var Count map[int][]int
 //func Count_int(){
 //	Count=make(map[int][]int,4)
@@ -83,6 +85,7 @@ func judge_etcd(e *useetcd.Use_Etcd,i int){
 		ip=string(e.Query(string(i+65)))
 		if (ip == "") {
 			fmt.Println("睡觉～～～")
+
 			time.Sleep(time.Second * 2)
 			continue
 		}else{
@@ -102,10 +105,14 @@ func newline() *Line {
 	e :=useetcd.NewEtcd()
 	wg.Add(Shard)
 	for i:=0;i<Shard;i++{
-		go judge_etcd(e,i)
+		judge_etcd(e,i)
 	}
-	endpoints.target["Localhost"]=[]string{"tm_node1:26657"}
+	Name := "tt"+Shard_name+"node1:26657"
+	fmt.Println(Name)
+	endpoints.target["Localhost"]=[]string{Name}
 	wg.Wait()
+	fmt.Println(endpoints.target)
+	fmt.Println("初始化完成")
 	l1 := NewLine(endpoints.target)
 	return l1
 }
@@ -134,15 +141,15 @@ func begin() {
 }
 func figure_Shard(){
 	for {
-		if (Shard == 0) {
-			//fmt.Println("等待")
+		if (Shard == 0 || Shard_name=="") {
+			fmt.Println("等待")
 			time.Sleep(time.Second*1)
 			continue
 		}else{
 			break
 		}
 	}
-	//fmt.Println("出来了！！shard，shard=",Shard)
+	fmt.Println("出来了！！shard，shard=",Shard)
 	Flag_init()
 	l = newline()
 	go begin()
@@ -192,7 +199,9 @@ func Find_conns(flag string) int {
 
 func UseConnect(key string, ip string) (*websocket.Conn, int) {
 	if ip=="localhost"{
+		Flag_conn["Localhost"][0]=true
 		c:=l.conns["Localhost"][0]
+
 		return c,0
 	}
 
@@ -246,7 +255,7 @@ func (l *Line) Start() error {
 		l.conns[shard] = make([]*websocket.Conn, len(l.target[shard]))
 
 		for i, ip := range l.target[shard] {
-			fmt.Println("连接",ip)
+			//fmt.Println("连接",ip)
 			c, _, err := l.connect(ip)
 			if err != nil {
 				go l.ReStart(ip,shard,i)
@@ -255,7 +264,9 @@ func (l *Line) Start() error {
 			l.conns[shard][i] = c
 			go receiveloop(c, shard, i)
 		}
+
 	}
+	fmt.Println("连接完成！")
 	return nil
 }
 
