@@ -225,6 +225,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 		// If we're a seed and this is an inbound peer,
 		// respond once and disconnect.
+		//fmt.Println("seed:",len(r.config.Seeds))
 		if r.config.SeedMode && !src.IsOutbound() {
 			id := string(src.ID())
 			v := r.lastReceivedRequests.Get(id)
@@ -350,7 +351,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		// waiting.
 		for _, seedAddr := range r.seedAddrs {
 			if seedAddr.Equals(srcAddr) {
-				r.ensurePeers()
+				r. ensurePeers()
 			}
 		}
 	}
@@ -415,7 +416,6 @@ func (r *PEXReactor) ensurePeers() {
 		"numDialing", dial,
 		"numToDial", numToDial,
 	)
-
 	if numToDial <= 0 {
 		return
 	}
@@ -424,13 +424,14 @@ func (r *PEXReactor) ensurePeers() {
 	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmn.MinInt(out, 8)*10 + 10
-
+	//fmt.Println("这是addrbook限制的数量",newBias)
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
 		try := r.book.PickAddress(newBias)
+		//fmt.Println("看看try",try)
 		if try == nil {
 			continue
 		}
@@ -446,9 +447,10 @@ func (r *PEXReactor) ensurePeers() {
 		r.Logger.Info("Will dial address", "addr", try)
 		toDial[try.ID] = try
 	}
-
+	//fmt.Println("要连接对的",toDial)
 	// Dial picked addresses
 	for _, addr := range toDial {
+
 		go r.dialPeer(addr)
 	}
 
@@ -466,6 +468,7 @@ func (r *PEXReactor) ensurePeers() {
 	// If we are not connected to nor dialing anybody, fallback to dialing a seed.
 	if out+in+dial+len(toDial) == 0 {
 		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
+		//fmt.Println("No addresses to dial nor connected peers. Falling back to seeds")
 		r.dialSeeds()
 	}
 }
@@ -502,13 +505,13 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 			return
 		}
 	}
-
+	//fmt.Println("连接节点",addr)
 	err := r.Switch.DialPeerWithAddress(addr, false)
 	if err != nil {
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
-
+		//fmt.Println("seed:", len(r.config.Seeds))
 		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
 		markAddrInBookBasedOnErr(addr, r.book, err)
 		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
@@ -553,14 +556,21 @@ func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, er
 // randomly dial seeds until we connect to one or exhaust them
 func (r *PEXReactor) dialSeeds() {
 	perm := cmn.RandPerm(len(r.seedAddrs))
+	//fmt.Println("看看有没有执行",perm)
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := r.seedAddrs[i]
+		//seedAddr1 := r.seedAddrs[i+1]
+		//fmt.Println(seedAddr)
 		err := r.Switch.DialPeerWithAddress(seedAddr, false)
+		//err1 := r.Switch.DialPeerWithAddress(seedAddr1, false)
 		if err == nil {
 			return
 		}
+		//if err1 == nil {
+		//	return
+		//}
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
 	r.Switch.Logger.Error("Couldn't connect to any seeds")

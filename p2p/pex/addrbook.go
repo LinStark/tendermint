@@ -244,7 +244,7 @@ func (a *addrBook) Empty() bool {
 // The address is picked randomly from an old or new bucket according
 // to the biasTowardsNewAddrs argument, which must be between [0, 100] (or else is truncated to that range)
 // and determines how biased we are to pick an address from a new bucket.
-// PickAddress returns nil if the AddrBook is empty or if we try to pick
+// PickAddress returns nilif  the AddrBook is empty or if we try to pick
 // from an empty bucket.
 func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	a.mtx.Lock()
@@ -386,6 +386,7 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	defer a.mtx.Unlock()
 
 	bookSize := a.size()
+	fmt.Println("addrbook的size是：",bookSize)
 	if bookSize <= 0 {
 		if bookSize < 0 {
 			panic(fmt.Sprintf("Addrbook size %d (new: %d + old: %d) is less than 0", a.nNew+a.nOld, a.nNew, a.nOld))

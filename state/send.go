@@ -29,7 +29,7 @@ func  conver2cptx(cpTxs []tp.TX,height int64) tp.TX{
 func Sendcptx(tx tp.TX, flag int) {
 
 	res, _ := json.Marshal(tx)
-	fmt.Println("-----------------sendcheckpointtx-----------------------")
+	fmt.Println("-----------------sendcheckpointtx11-----------------------")
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 	if err != nil {
 		fmt.Printf("failed to encode params: %v\n", err)

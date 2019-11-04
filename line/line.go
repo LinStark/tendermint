@@ -20,6 +20,12 @@ var endpoints node
 var wg sync.WaitGroup
 var Count = 0
 var Shard_name = ""
+var Connect_success = false //等待初始化完成才能使用
+var sendTimeout = 10 * time.Second
+var pingPeriod = 27  * time.Second
+var Send_flag[]bool //设定定时器，达到一定时间发送交易
+var timer = time.NewTicker(time.Second*5) //周期5s
+var Judge_leader = false //判断是否是leader，只有leader才能建立连接
 //var Count map[int][]int
 //func Count_int(){
 //	Count=make(map[int][]int,4)
@@ -30,9 +36,19 @@ var Shard_name = ""
 //		}
 //	}
 //}
+func time1(){//定时器实现
+	for{
+		select {
+		case <- timer.C:
+			for i := range Send_flag{
+				Send_flag[i]=false
+			}
+		}
+	}
+}
 func Flag_init() { //初始化链接没使用则为false
-	Flag_conn = make(map[string][]bool, Shard) //初始设置4个分片
-	for i := 0; i < Shard+1; i++ {
+	Flag_conn = make(map[string][]bool, Shard) //初始设置n个分片
+	for i := 0; i < Shard+1; i++ {//取到所有的连接，在初始化一个本地
 		if(i==Shard){
 			Flag_conn["Localhost"] = make([]bool, 10)
 			Flag_conn["Localhost"][0]=false
@@ -40,6 +56,9 @@ func Flag_init() { //初始化链接没使用则为false
 		}
 
 		name := string(i+65)
+		if(name==Shard_name){
+			continue
+		}
 		//fmt.Println("初始化效果",name)
 		Flag_conn[name] = make([]bool, 10)
 		for j := 0; j < 10; j++ {
@@ -47,34 +66,43 @@ func Flag_init() { //初始化链接没使用则为false
 		}
 	}
 }
-func Get(key string) (value string) {
+func keep_message(shard string,i int){
+	if Flag_conn[shard][i]==false{
+		Flag_conn[shard][i]=true
+		c := l.conns[shard][i]
+		c.SetWriteDeadline(time.Now().Add(sendTimeout))
 
-	A := "192.168.5.56"
-	B := "192.168.5.57"
-	C := "192.168.5.58"
-	D := "192.168.5.60"
-	E := "192.168.5.61"
-	F := "192.168.5.62"
-	G := "192.168.5.63"
-	H := "192.168.5.66"
-	if key == "A" {
-		value = A
-	} else if key == "B" {
-		value = B
-	} else if key == "C" {
-		value = C
-	} else if key == "D"{
-		value = D
-	} else if key == "E"{
-		value = E
-	} else if key == "F"{
-		value = F
-	} else if key == "G"{
-		value = G
-	} else if key == "H"{
-		value = H
+		if err := c.WriteMessage(websocket.PongMessage, []byte{}); err != nil {
+			fmt.Println("守护进程出错",err)
+			c,_,err1 := Connect(l.target[shard][i])
+			if err1!=nil{
+				fmt.Println(err1)
+				return
+			}
+			l.conns[shard][i]=c
+			fmt.Println("重新连接")
+		}
+		//fmt.Println("连接畅通")
+		Flag_conn[shard][i]=false
 	}
-	return value
+}
+func (l *Line)KeepAlive(){
+	pingsTicker := time.NewTicker(pingPeriod)
+	for{
+		select{
+			case<-pingsTicker.C:
+				//fmt.Println("定时器")
+				for shard := range l.target {
+					for i, _ := range l.target[shard] {
+						//fmt.Println("连接",i)
+						keep_message(shard,i)
+					}
+
+				}
+				fmt.Println("维护连接")
+
+		}
+	}
 }
 func Shard_init(){
 	Shard=0
@@ -82,6 +110,7 @@ func Shard_init(){
 func judge_etcd(e *useetcd.Use_Etcd,i int){
 	var ip string
 	for {
+
 		ip=string(e.Query(string(i+65)))
 		if (ip == "") {
 			fmt.Println("睡觉～～～")
@@ -103,12 +132,19 @@ func newline() *Line {
 
 	endpoints.target=make(map[string][]string, Shard)
 	e :=useetcd.NewEtcd()
+
 	wg.Add(Shard)
 	for i:=0;i<Shard;i++{
+		name:=string(i+65)
+		if(Shard_name==name){
+			wg.Done()
+			continue
+		}
 		judge_etcd(e,i)
 	}
+
 	Name := "tt"+Shard_name+"node1:26657"
-	fmt.Println(Name)
+	//fmt.Println(Name)
 	endpoints.target["Localhost"]=[]string{Name}
 	wg.Wait()
 	fmt.Println(endpoints.target)
@@ -135,28 +171,67 @@ var l *Line
 //var cn1 *Cn
 func begin() {
 	if err := l.Start(); err != nil {
+		fmt.Println(err)
 		return
 	}
 
+	return
 }
 func figure_Shard(){
 	for {
 		if (Shard == 0 || Shard_name=="") {
-			fmt.Println("等待")
+			//fmt.Println("等待")
 			time.Sleep(time.Second*1)
 			continue
 		}else{
 			break
 		}
 	}
-	fmt.Println("出来了！！shard，shard=",Shard)
+	fmt.Println("出来了！！shard=",Shard)
+	Connect_success = true
+	if (Connect_success==true){
+		fmt.Println("Connect_success=true")
+	}
+	for i:=0;i<10;i++{
+		time.Sleep(time.Second)//等待10s
+		if(Judge_leader==true){
+			break
+		}else{
+			time.Sleep(time.Second)
+			if(i==4){
+				fmt.Println("该节点不是leader，因此不用建立连接")
+				return
+			}
+		}
+	}
+	fmt.Println("该点是leader因此建立连接")
 	Flag_init()
 	l = newline()
 	go begin()
 }
+func Send_flag1(){
+
+	for{
+		if(Shard==0){
+			time.Sleep(time.Second)
+		}else{
+			break
+		}
+	}
+	Send_flag=make([]bool,Shard)
+	for i:=0;i<Shard;i++{
+		Send_flag[i]=false
+	}
+	fmt.Println("初始化完成flag")
+	go time1()
+}
 func init() {
+
 	Shard_init()
+
 	go figure_Shard()
+
+	go Send_flag1()
 
 }
 func receiveloop(conn *websocket.Conn, shard string, i int) {
@@ -198,10 +273,19 @@ func Find_conns(flag string) int {
 }
 
 func UseConnect(key string, ip string) (*websocket.Conn, int) {
+	for{
+		if(Connect_success==false){
+			fmt.Println("还未初始化完成请稍等～")
+			time.Sleep(time.Second)
+		} else if(Connect_success==true){
+			break
+		}
+	}
+
 	if ip=="localhost"{
 		Flag_conn["Localhost"][0]=true
 		c:=l.conns["Localhost"][0]
-
+		fmt.Println("取到本地连接")
 		return c,0
 	}
 
@@ -249,6 +333,19 @@ func (l *Line)ReStart(ip string,shard string,i int){
 	return
 
 }
+func ReStart1(shard string,i int)*websocket.Conn{
+	ip :=l.target[shard][i]
+	fmt.Println("连接出错,等待2s自动重连", ip)
+	c, _, err :=Connect(ip)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	l.conns[shard][i] = c
+	go receiveloop(c, shard, i)
+	return c
+
+}
 func (l *Line) Start() error {
 	//time.Sleep(time.Second * 20)
 	for shard := range l.target {
@@ -262,11 +359,15 @@ func (l *Line) Start() error {
 				continue
 			}
 			l.conns[shard][i] = c
-			go receiveloop(c, shard, i)
+			//go receiveloop(c, shard, i)
 		}
 
 	}
 	fmt.Println("连接完成！")
+
+	go l.KeepAlive()
+
+	fmt.Println("完成～～～")
 	return nil
 }
 

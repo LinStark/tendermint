@@ -106,7 +106,6 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 			addrWithoutProtocol,
 			errors.New("host is empty")}
 	}
-
 	ip := net.ParseIP(host)
 	if ip == nil {
 		ips, err := net.LookupIP(host)

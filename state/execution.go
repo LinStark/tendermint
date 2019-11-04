@@ -24,63 +24,9 @@ import (
 // then commits and updates the mempool atomically, then saves state.
 
 // BlockExecutor provides the context and accessories for properly executing a block.
-//type Line struct {
-//	target map[string][]string
-//	conns  map[string][]*websocket.Conn
-//}
-//type node struct{
-//	target map[string] []string
-//}
-//func NewLine(target map[string][]string) *Line {
-//	//sum是算整体网络的节点个数，为了开辟相当的空间
-//	var sum int
-//	sum = 0
-//	for shard := range target {
-//		sum += len(target[shard])
-//	}
-//	return &Line{
-//		target: target, //目标节点地址
-//		conns:  make(map[string][]*websocket.Conn, sum), //连接地址
-//	}
-//}
-//func newline() *Line{
-//	endpoints:=&node{
-//		target:make(map[string][]string,16),
-//	}
-//
-//	endpoints.target["A"]=[]string{"192.168.5.56:26657","192.168.5.56:36657","192.168.5.56:46657","192.168.5.56:56657"}
-//	endpoints.target["B"]=[]string{"192.168.5.57:26657","192.168.5.57:36657","192.168.5.57:46657","192.168.5.57:56657"}
-//	endpoints.target["C"]=[]string{"192.168.5.58:26657","192.168.5.58:36657","192.168.5.58:46657","192.168.5.58:56657"}
-//	endpoints.target["D"]=[]string{"192.168.5.60:26657","192.168.5.60:36657","192.168.5.60:46657","192.168.5.60:56657"}
-//
-//	l:=NewLine(endpoints.target)
-//	err:=l.Start()
-//	if err!=nil{
-//		return nil
-//	}
-//	return l
-//}
-//func (l *Line) Start() error {
-//	time.Sleep(time.Second*20)
-//	for shard := range l.target {
-//		l.conns[shard]=make([]*websocket.Conn,len(l.target[shard]))
-//
-//		for i, ip := range l.target[shard] {
-//
-//			s, _, err := connect(ip)
-//			if err != nil {
-//				fmt.Println("连接出错:",ip)
-//				return err
-//			}
-//			fmt.Println("首次连接",l.conns[shard][i])
-//			l.conns[shard][i] = s
-//		}
-//	}
-//	return nil
-//}
-//var c =newline()
+
 const (
-	sendTimeout = 30 * time.Second
+	sendTimeout = 100 * time.Second
 )
 
 type BlockExecutor struct {
@@ -336,7 +282,7 @@ func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,
 					}*/
 			}
 		}
-		fmt.Println("删除了",myline.Count,"条交易")
+		//fmt.Println("删除了",myline.Count,"条交易")
 		myline.Count= 0
 	}
 	return sendtxs, receivetxs
@@ -373,19 +319,18 @@ func (blockExec *BlockExecutor) SendRelayTxs( /*line *myline.Line,*/ txs []tp.TX
 		shard_send[flag] = append(shard_send[flag], txs[i])
 	}
 	var tx_package []tp.TX
-	begin := time.Now()
+	//begin := time.Now()
 	for i := 0; i < len(shard_send); i++ {
 
 		if shard_send[i] != nil {
 			num := len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的relay交易数量：", num)
 			go blockExec.Send_Package(num,i,tx_package)
 
 		}
 	}
-	end := time.Now().Sub(begin)
-	fmt.Println("Send using time:", end)
+	//end := time.Now().Sub(begin)
+	//fmt.Println("Send using time:", end)
 }
 func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 	var c2 *websocket.Conn
@@ -402,7 +347,7 @@ func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 		}else{
 			key=tx_package[0].Receiver
 			//fmt.Println("发往分片",key)
-			fmt.Println(key,len(tx_package))
+			//fmt.Println(key,len(tx_package))
 			c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
@@ -430,9 +375,10 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		}
 		return err
 	})
-	c.SetWriteDeadline(time.Now().Add(sendTimeout))
+
+	//c.SetWriteDeadline(time.Now().Add(sendTimeout))
 	//rawParamsJSON := json.RawMessage(paramsJSON)
-	time1 := time.Now()
+	//time1 := time.Now()
 	err1 := c.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Sender:  "flag",
@@ -440,17 +386,28 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	})
-	time2 := time.Now().Sub(time1)
-	fmt.Println("send a tx use time:", time2)
-	if err1 != nil {
-		fmt.Println("错误！！！")
-		fmt.Println(err1)
+	//time2 := time.Now().Sub(time1)
+	//fmt.Println("send a tx use time:", time2)
 
+	if err1 != nil {
+		fmt.Println("发送err",err1)
+		c := myline.ReStart1(string(index+65),rnd)
+		c.WriteJSON(rpctypes.RPCRequest{
+			JSONRPC: "2.0",
+			Sender:  "flag",
+			ID:      rpctypes.JSONRPCStringID("relay"),
+			Method:  "broadcast_tx_async",
+			Params:  rawParamsJSON,
+		})
+		time.Sleep(time.Millisecond*100)
+		myline.Flag_conn[string(index+65)][rnd] = false
 		return
 	}
-
+	fmt.Println("发送完毕",tx_package[0].Txtype,"共",len(tx_package),"条交易")
+	time.Sleep(time.Millisecond*100)
 	//time.Sleep(time.Millisecond*100)
 	myline.Flag_conn[string(index+65)][rnd] = false //释放资源
+
 }
 
 func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []tp.TX) {
@@ -471,7 +428,6 @@ func (blockExec *BlockExecutor) SendAddedRelayTxs( /*line *myline.Line,*/ txs []
 		if shard_send[i] != nil {
 			num := len(shard_send[i])
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的addtx交易数量：", num)
 			go blockExec.Send_Package(num,i,tx_package)
 		}
 	}
@@ -554,7 +510,7 @@ func execBlockOnProxyApp(
 
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
-
+	//fmt.Println("运行1")
 	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		switch r := res.Value.(type) {
@@ -576,7 +532,7 @@ func execBlockOnProxyApp(
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
-
+	//fmt.Println("运行2")
 	// Begin block
 	var err error
 	abciResponses.BeginBlock, err = proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
@@ -604,7 +560,7 @@ func execBlockOnProxyApp(
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
-
+	//fmt.Println("运行3")
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
 	return abciResponses, nil
@@ -696,7 +652,7 @@ func updateState(
 
 	// Update the validator set with the latest abciResponses.
 	flag := false
-	if height%10000 == 0 {
+	if height%10000 ==0 {
 		flag = true
 	}
 	// rand.Seed(time.Now().Unix())

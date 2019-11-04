@@ -35,8 +35,9 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-)
 
+)
+var flag_conn = false
 //-----------------------------------------------------------------------------
 // Errors
 
@@ -958,13 +959,11 @@ func (cs *ConsensusState) isProposer(address []byte) bool {
 func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
+
 		e:=useetcd.NewEtcd()
 		e.Update(getShard(), getIp())
+		myline.Judge_leader=true
 	}
-}
-func getPort() string {
-	v, _ := syscall.Getenv("PORT")
-	return v
 }
 func getIp()string{
 	addrs, err := net.InterfaceAddrs()
@@ -1562,23 +1561,7 @@ func conver2cptx(cpTxs []tp.TX, height int64) tp.TX {
 	return *cptx
 }
 
-func Get(key string) (value string) {
 
-	A := "192.168.5.56"
-	B := "192.168.5.57"
-	C := "192.168.5.58"
-	D := "192.168.5.60"
-	if key == "A" {
-		value = A
-	} else if key == "B" {
-		value = B
-	} else if key == "C" {
-		value = C
-	} else {
-		value = D
-	}
-	return value
-}
 func Send_message(tx tp.TX){
 	res, _ := json.Marshal(tx)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
@@ -1639,6 +1622,12 @@ func Sendcptx(tx tp.TX, flag int) {
 		ID:      "tm-bench",
 		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
+	}
+	if(flag_conn==false){
+		name := getIp()+":26657"
+		c,_,_:= myline.Connect(name)
+		c.WriteJSON(rc)
+		flag_conn=true
 	}
 	c,_:=myline.UseConnect("Localhost","localhost")
 	c.WriteJSON(rc)

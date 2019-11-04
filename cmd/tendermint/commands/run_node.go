@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-
 	"github.com/spf13/cobra"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -50,6 +49,7 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			n, err := nodeProvider(config, logger)
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)

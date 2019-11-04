@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"text/tabwriter"
 	"time"
 
 	"github.com/rcrowley/go-metrics"
@@ -52,14 +51,14 @@ func calculateStatistics(
 	//fmt.Println("blockMetas:",len(blockMetas))
 	//fmt.Println(blockMetas)
 	// iterates from max height to min height
-	t1 := time.Now()
-	t2 := time.Now()
+	//t1 := time.Now()
+	//t2 := time.Now()
 	sum := 0.0
-	for i, blockMeta := range blockMetas {
-		if i == 0 {
-			t1 = blockMeta.Header.Time
-		}
-		t2 = blockMeta.Header.Time
+	for _, blockMeta := range blockMetas {
+		//if i == 0 {
+		//	t1 = blockMeta.Header.Time
+		//}
+		//t2 = blockMeta.Header.Time
 		//fmt.Println(i)
 		//fmt.Println(blockMeta)
 		//fmt.Println("blockMeta.Header.NumTxs",blockMeta.Header.NumTxs)
@@ -84,16 +83,17 @@ func calculateStatistics(
 
 		logger.Debug(fmt.Sprintf("%d txs at block height %d", blockMeta.Header.NumTxs, blockMeta.Header.Height))
 	}
-	time1 := t1.Sub(t2).Seconds()
-	tps := sum / time1
+	//fmt.Println("sum:",sum)
+	//time1 := t1.Sub(t2).Seconds()
+	//tps := sum / time1
 	//dua := float64(t2)
-	fmt.Println("time:", time1)
-	fmt.Println("sum:", (sum))
-	fmt.Println("TPS:", tps)
-	fmt.Println("TimeStart:", timeStart)
-	fmt.Println("TimeEnd:", timeEnd)
-	fmt.Println("numTxsPerSec", numTxsPerSec)
-	fmt.Println("numBlocksPerSec", numBlocksPerSec)
+	//fmt.Println("time:", time1)
+	//fmt.Println("sum:", (sum))
+	//fmt.Println("TPS:", tps)
+	//fmt.Println("TimeStart:", timeStart)
+	//fmt.Println("TimeEnd:", timeEnd)
+	//fmt.Println("numTxsPerSec", numTxsPerSec)
+	//fmt.Println("numBlocksPerSec", numBlocksPerSec)
 	for i := int64(0); i < int64(duration); i++ {
 		stats.BlocksThroughput.Update(numBlocksPerSec[i])
 		stats.TxsThroughput.Update(numTxsPerSec[i])
@@ -116,18 +116,18 @@ func getBlockMetas(client tmrpc.Client, minHeight int64, timeStart, timeEnd time
 		diff       = lastHeight - minHeight
 		offset     = len(blockMetas)
 	)
-	fmt.Println("offset:", offset)
+	//fmt.Println("offset:", offset)
 	for offset < int(diff) {
 		// get blocks between minHeight and last height
 		info, err := client.BlockchainInfo(minHeight, lastHeight-int64(offset))
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("offset1:", offset)
+		//fmt.Println("offset1:", offset)
 		blockMetas = append(blockMetas, info.BlockMetas...)
 		offset = len(blockMetas)
 	}
-	fmt.Println("MinHeight:", minHeight, " LastHeight:", lastHeight)
+	//fmt.Println("MinHeight:", minHeight, " LastHeight:", lastHeight)
 	return blockMetas, nil
 }
 
@@ -148,28 +148,7 @@ func printStatistics(stats *statistics, outputFormat string) {
 		}
 		fmt.Println(string(result))
 	} else {
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 5, ' ', 0)
-		fmt.Fprintln(w, "Stats\tAvg\tStdDev\tMax\tTotal\t")
-		fmt.Fprintln(
-			w,
-			fmt.Sprintf(
-				"Txs/sec\t%.0f\t%.0f\t%d\t%d\t",
-				stats.TxsThroughput.Mean(),
-				stats.TxsThroughput.StdDev(),
-				stats.TxsThroughput.Max(),
-				stats.TxsThroughput.Sum(),
-			),
-		)
-		fmt.Fprintln(
-			w,
-			fmt.Sprintf("Blocks/sec\t%.3f\t%.3f\t%d\t%d\t",
-				stats.BlocksThroughput.Mean(),
-				stats.BlocksThroughput.StdDev(),
-				stats.BlocksThroughput.Max(),
-				stats.BlocksThroughput.Sum(),
-			),
-		)
-		w.Flush()
+		fmt.Println(stats.TxsThroughput.Mean())
 
 	}
 }

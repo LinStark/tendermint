@@ -126,7 +126,7 @@ Examples:
 
 	// Wait until transacters have begun until we get the start time.
 	timeStart := time.Now()
-	fmt.Println(timeStart)
+	//fmt.Println(timeStart)
 	logger.Info("Time last transacter started", "t", timeStart)
 
 	duration := time.Duration(durationInt) * time.Second

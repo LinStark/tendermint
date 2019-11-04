@@ -43,6 +43,7 @@ func ParseConfig() (*cfg.Config, error) {
 	}
 	myline.Shard=conf.Instrumentation.Shard
 	myline.Shard_name=getShard()
+
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err = conf.ValidateBasic(); err != nil {

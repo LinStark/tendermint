@@ -85,10 +85,8 @@ type ErrMempoolIsFull struct {
 }
 
 func (e ErrMempoolIsFull) Error() string {
-	return fmt.Sprintf(
-		"Mempool is full: number of txs %d (max: %d), total txs bytes %d (max: %d)",
-		e.numTxs, e.maxTxs,
-		e.txsBytes, e.maxTxsBytes)
+	s := "Mempool is full"
+	return s
 }
 
 // ErrPreCheck is returned when tx is too big

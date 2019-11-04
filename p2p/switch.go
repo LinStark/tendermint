@@ -118,7 +118,6 @@ func NewSwitch(
 		transport:     transport,
 		filterTimeout: defaultFilterTimeout,
 	}
-	fmt.Println("我在这里新建一个Switch实例")
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
 
@@ -428,6 +427,7 @@ func isPrivateAddr(err error) bool {
 // TODO: remove addrBook arg since it's now set on the switch
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
+	//fmt.Println("要连接的节点",peers)
 	// only log errors, dial correct addresses
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
@@ -459,7 +459,9 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	}
 
 	// permute the list, dial them in random order.
+	//随机
 	perm := sw.rng.Perm(len(netAddrs))
+	//fmt.Println("应当连接的个数",perm)
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			j := perm[i]
@@ -612,7 +614,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	persistent bool,
 ) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
-
+	//fmt.Println("Dialing peer", "address", addr)
 	// XXX(xla): Remove the leakage of test concerns in implementation.
 	if cfg.TestDialFail {
 		go sw.reconnectToPeer(addr)
