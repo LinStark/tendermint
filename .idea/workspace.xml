@@ -2,27 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e23d8ddd-cd3c-4ec0-ab24-85f486c5abdb" name="默认更改列表" comment="">
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/Dockerfile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/Dockerfile.dev" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/Makefile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/main.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/run.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/statistics.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/transacter.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tools/tm-bench_noshard/transacter_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DOCKER/tendermint.tar" beforeDir="false" afterPath="$PROJECT_DIR$/DOCKER/tendermint.tar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/tendermint/commands/root.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/line/line.go" beforeDir="false" afterPath="$PROJECT_DIR$/line/line.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mempool/mempool.go" beforeDir="false" afterPath="$PROJECT_DIR$/mempool/mempool.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpc/core/mempool.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/core/mempool.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpc/lib/server/handlers.go" beforeDir="false" afterPath="$PROJECT_DIR$/rpc/lib/server/handlers.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/state/execution.go" beforeDir="false" afterPath="$PROJECT_DIR$/state/execution.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/test1.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/test1.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tm-bench/transacter.go" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tm-bench/transacter.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/useetcd/use_etcd.go" beforeDir="false" afterPath="$PROJECT_DIR$/useetcd/use_etcd.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -44,12 +25,87 @@
     <expand />
     <select />
   </component>
+  <component name="FUSProjectUsageTrigger">
+    <session id="111368399">
+      <usages-collector id="statistics.file.extensions.open">
+        <counts>
+          <entry key="go" value="2" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.open">
+        <counts>
+          <entry key="Go" value="2" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.extensions.edit">
+        <counts>
+          <entry key="go" value="13" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.edit">
+        <counts>
+          <entry key="Go" value="13" />
+        </counts>
+      </usages-collector>
+    </session>
+  </component>
+  <component name="FileEditorManager">
+    <leaf>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/state/execution.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="368">
+              <caret line="568" column="20" selection-start-line="568" selection-start-column="20" selection-end-line="568" selection-end-column="20" />
+              <folding>
+                <element signature="e#15#544#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/state/account.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="192">
+              <caret line="110" column="5" selection-start-line="110" selection-start-column="5" selection-end-line="110" selection-end-column="5" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/state/account_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1278">
+              <caret line="76" column="27" lean-forward="true" selection-start-line="76" selection-start-column="27" selection-end-line="76" selection-end-column="27" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/mempool/mempool.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="310">
+              <caret line="477" column="36" selection-start-line="477" selection-start-column="36" selection-end-line="477" selection-end-column="36" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Go File" />
       </list>
     </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>New</find>
+      <find>execBlock</find>
+      <find>checkTx</find>
+      <find>CheckTx</find>
+    </findStrings>
   </component>
   <component name="GOROOT" path="/usr/lib/go-1.10" />
   <component name="Git.Settings">
@@ -58,9 +114,57 @@
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="false" />
   </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/state/account.go" />
+        <option value="$PROJECT_DIR$/state/account_test.go" />
+        <option value="$PROJECT_DIR$/state/execution.go" />
+        <option value="$PROJECT_DIR$/mempool/mempool.go" />
+      </list>
+    </option>
+  </component>
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsGulpfileManager">
+    <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="ProjectFrameBounds">
+    <option name="x" value="582" />
+    <option name="y" value="23" />
+    <option name="width" value="1414" />
+    <option name="height" value="745" />
+  </component>
   <component name="ProjectId" id="1RAodPcZWnNbA6IruuHem0X9P9E" />
-  <component name="ProjectLevelVcsManager">
-    <ConfirmationsSetting value="2" id="添加" />
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="tendermint" type="b2602c69:ProjectViewProjectNode" />
+              <item name="tendermint" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="tendermint" type="b2602c69:ProjectViewProjectNode" />
+              <item name="tendermint" type="462c0819:PsiDirectoryNode" />
+              <item name="mempool" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="tendermint" type="b2602c69:ProjectViewProjectNode" />
+              <item name="tendermint" type="462c0819:PsiDirectoryNode" />
+              <item name="state" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="DefaultGoTemplateProperty" value="Go File" />
@@ -145,6 +249,13 @@
       <filePath value="$PROJECT_DIR$/config/toml_test.go" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Go Test.TestApplyBlock in github.com/tendermint/tendermint/state" />
+      <item itemvalue="Go Test.TestNodeStartStop in github.com/tendermint/tendermint/node" />
+      <item itemvalue="Go Test.node_test.go" />
+      <item itemvalue="Go Test.reactor_test.go" />
+      <item itemvalue="Go Test.toml_test.go" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Go Test.toml_test.go" />
@@ -155,6 +266,30 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="ToolWindowManager">
+    <frame x="582" y="23" width="1414" height="745" extended-state="0" />
+    <editor active="true" />
+    <layout>
+      <window_info id="Favorites" side_tool="true" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.25" />
+      <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
+      <window_info anchor="bottom" id="Database Changes" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Version Control" />
+      <window_info anchor="bottom" id="Terminal" />
+      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" />
+      <window_info anchor="bottom" id="Run" order="2" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="right" id="Database" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+    </layout>
+  </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="1" />
   </component>
@@ -164,6 +299,12 @@
         <entry key="MAIN">
           <value>
             <State>
+              <option name="RECENTLY_FILTERED_USER_GROUPS">
+                <collection />
+              </option>
+              <option name="RECENTLY_FILTERED_BRANCH_GROUPS">
+                <collection />
+              </option>
               <option name="COLUMN_ORDER" />
             </State>
           </value>
@@ -275,5 +416,38 @@
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/state/account_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1278">
+          <caret line="76" column="27" lean-forward="true" selection-start-line="76" selection-start-column="27" selection-end-line="76" selection-end-column="27" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/state/account.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="192">
+          <caret line="110" column="5" selection-start-line="110" selection-start-column="5" selection-end-line="110" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/state/execution.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="368">
+          <caret line="568" column="20" selection-start-line="568" selection-start-column="20" selection-end-line="568" selection-end-column="20" />
+          <folding>
+            <element signature="e#15#544#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/mempool/mempool.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="310">
+          <caret line="477" column="36" selection-start-line="477" selection-start-column="36" selection-end-line="477" selection-end-column="36" />
+        </state>
+      </provider>
+    </entry>
   </component>
 </project>

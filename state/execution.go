@@ -74,6 +74,13 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 		option(res)
 	}
 
+	/*
+	 * @Author: zyj
+	 * @Desc: transfer the db reference
+	 * @Date: 19.11.09
+	 */
+	InitAccountDB(res)
+
 	return res
 }
 
@@ -551,6 +558,16 @@ func execBlockOnProxyApp(
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
+		}
+
+		/*
+         * @Author: zyj
+         * @Desc: update state
+         * @Date: 19.11.10
+         */
+		accountLog := NewAccountLog(tx)
+		if accountLog != nil {
+			accountLog.Save()
 		}
 	}
 
