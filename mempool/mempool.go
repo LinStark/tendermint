@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	tp "github.com/tendermint/tendermint/identypes"
+	//"github.com/tendermint/tendermint/state"
 )
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a

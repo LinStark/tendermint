@@ -8,8 +8,8 @@ package state
 
 import (
     "encoding/json"
-    dbm "github.com/tendermint/tmlibs/db"
-    "github.com/tendermint/tmlibs/log"
+    dbm "github.com/tendermint/tendermint/libs/db"
+    "github.com/tendermint/tendermint/libs/log"
     "strconv"
     "strings"
 )
