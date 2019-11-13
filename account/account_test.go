@@ -1,10 +1,10 @@
-package state
+package account
 
 import (
-    "fmt"
-    "testing"
-    "github.com/tendermint/tmlibs/log"
+	"fmt"
     dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+	"testing"
 )
 
 func TestNewAccountLog(t *testing.T) {

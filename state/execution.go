@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/account"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"net"
 	"time"
@@ -79,7 +80,7 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 	 * @Desc: transfer the db reference
 	 * @Date: 19.11.09
 	 */
-	InitAccountDB(res)
+	account.InitAccountDB(res.db, res.logger)
 
 	return res
 }
@@ -565,7 +566,7 @@ func execBlockOnProxyApp(
          * @Desc: update state
          * @Date: 19.11.10
          */
-		accountLog := NewAccountLog(tx)
+		accountLog := account.NewAccountLog(tx)
 		if accountLog != nil {
 			accountLog.Save()
 		}

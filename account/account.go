@@ -4,7 +4,7 @@
  * @Date: 19.11.10
  */
 
-package state
+package account
 
 import (
     "encoding/json"
@@ -108,9 +108,9 @@ var db dbm.DB
 var logger log.Logger
 
 // 获取db和logger句柄
-func InitAccountDB(blockExec *BlockExecutor) {
-    db = blockExec.db
-    logger = blockExec.logger
+func InitAccountDB(db1 dbm.DB, logger1 log.Logger) {
+    db = db1
+    logger = logger1
 }
 
 // 为单元测试提供的初始化
