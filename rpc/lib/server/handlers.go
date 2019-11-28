@@ -617,23 +617,7 @@ func (wsc *wsConnection) Context() context.Context {
 	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
 	return wsc.ctx
 }
-func Get(key string) (value string) {
 
-	A := "192.168.5.56"
-	B := "192.168.5.57"
-	C := "192.168.5.58"
-	D := "192.168.5.60"
-	if key == "A" {
-		value = A
-	} else if key == "B" {
-		value = B
-	} else if key == "C" {
-		value = C
-	} else {
-		value = D
-	}
-	return value
-}
 func (wsc *wsConnection)Send_Package(num int,i int,tx_package []identypes.TX){
 	var c2 *websocket.Conn
 	var rnd int
@@ -785,26 +769,20 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 					}
 					return err
 				})
-				//c.SetWriteDeadline(time.Now().Add(sendTimeout))
-				//rawParamsJSON := json.RawMessage(paramsJSON)
-				//time1 := time.Now()
-				err1 := c.WriteJSON(rc)
-				time.Sleep(time.Millisecond*100)
+
+
+				err1:=c.WriteJSON(rc)
+
 				if err1 != nil {
-					c := myline.ReStart1(tx.Sender,rnd)
+
+					myline.ReStart1(tx.Sender,rnd)
 					c.WriteJSON(rc)
+					time.Sleep(time.Millisecond*20)
 					myline.Flag_conn[tx.Sender][rnd] = false
 					return
 				}
+				time.Sleep(time.Millisecond*20)
 				myline.Flag_conn[tx.Sender][rnd] = false
-				//c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-				//addset[int(tx.Sender[0])-65] = append(addset[int(tx.Sender[0])-65], tx)
-				//if len(addset[int(tx.Sender[0])-65])>100 || myline.Send_flag[int(tx.Sender[0])-65]==false{
-				//	if(len(addset[int(tx.Sender[0])-65]) ==0){
-				//		return
-				//	}
-				//	go wsc.Send_Package(len(addset[int(tx.Sender[0])-65]),int(tx.Sender[0])-65,addset[int(tx.Sender[0])-65])
-				//}
 			}
 			return
 		}
@@ -907,7 +885,7 @@ func (wsc *wsConnection) readRoutine() {
 					//}
 					//wg.Add(1)
 					//解析成一条条交易并且封装成json让别人解析
-					go wsc.handlerTx(request,m[i])
+					wsc.handlerTx(request,m[i])
 
 					//go lis(request.Sender)
 

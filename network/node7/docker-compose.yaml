@@ -1,0 +1,97 @@
+services:
+  ttGnode1:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode1
+    hostname: ttGnode1
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node1_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=c537382c1b3b4ea34e176d0bdcb835c27ea37b3b@ttGnode5:26656,c3d68d17629fbbca016f841e67f36767fb5daba7@ttGnode3:26656,71d14f8808e8f30f3bba7f0aaf5fe5ae3735efe9@ttGnode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode1]
+  ttGnode2:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode2
+    hostname: ttGnode2
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node2_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=7d1359bd5d411290eb574c8c3d529c30e62acd6a@ttGnode1:26656,81a75a2215ac49412c037d60744dae66a339b834@ttGnode4:26656,6beece9afa20147d1bf7f5098e4fb41880a0d2ce@ttGnode6:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode2]
+  ttGnode3:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode3
+    hostname: ttGnode3
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node3_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=7d1359bd5d411290eb574c8c3d529c30e62acd6a@ttGnode1:26656,232c40e7f5faaaff5305bca066d38d695d7a8e8a@ttGnode7:26656,81a75a2215ac49412c037d60744dae66a339b834@ttGnode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode3]
+  ttGnode4:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode4
+    hostname: ttGnode4
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node4_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=c3d68d17629fbbca016f841e67f36767fb5daba7@ttGnode3:26656,71d14f8808e8f30f3bba7f0aaf5fe5ae3735efe9@ttGnode2:26656,54860ae8688cdd0b716b804b99283aa827f2926c@ttGnode8:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode4]
+  ttGnode5:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode5
+    hostname: ttGnode5
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node5_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=7d1359bd5d411290eb574c8c3d529c30e62acd6a@ttGnode1:26656,232c40e7f5faaaff5305bca066d38d695d7a8e8a@ttGnode7:26656,6beece9afa20147d1bf7f5098e4fb41880a0d2ce@ttGnode6:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode5]
+  ttGnode6:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode6
+    hostname: ttGnode6
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node6_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=c537382c1b3b4ea34e176d0bdcb835c27ea37b3b@ttGnode5:26656,54860ae8688cdd0b716b804b99283aa827f2926c@ttGnode8:26656,71d14f8808e8f30f3bba7f0aaf5fe5ae3735efe9@ttGnode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode6]
+  ttGnode7:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode7
+    hostname: ttGnode7
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node7_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=c537382c1b3b4ea34e176d0bdcb835c27ea37b3b@ttGnode5:26656,c3d68d17629fbbca016f841e67f36767fb5daba7@ttGnode3:26656,54860ae8688cdd0b716b804b99283aa827f2926c@ttGnode8:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode7]
+  ttGnode8:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttGnode8
+    hostname: ttGnode8
+    tty: 'true'
+    volumes: ['/home/centos/network/node7/node8_data:/tendermint']
+    environment: [TASKID=G]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=81a75a2215ac49412c037d60744dae66a339b834@ttGnode4:26656,6beece9afa20147d1bf7f5098e4fb41880a0d2ce@ttGnode6:26656,232c40e7f5faaaff5305bca066d38d695d7a8e8a@ttGnode7:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttGnode8]

@@ -363,7 +363,7 @@ func updateTx(txNumber int, send_shard []string, shard string) []byte {
 	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
 	content := shard + strconv.Itoa(txNumber) + timestamp
 	var res []byte
-	if txNumber%2 == 0 {
+	if txNumber%3 != 0 {
 		step := len(send_shard)
 		tx := &TX{
 			Txtype:   "relaytx",

@@ -21,8 +21,8 @@ var wg sync.WaitGroup
 var Count = 0
 var Shard_name = ""
 var Connect_success = false //等待初始化完成才能使用
-var sendTimeout = 10 * time.Second
-var pingPeriod = 27  * time.Second
+var sendTimeout = 11 * time.Second
+var pingPeriod = 11  * time.Second
 var Send_flag[]bool //设定定时器，达到一定时间发送交易
 var timer = time.NewTicker(time.Second*5) //周期5s
 var Judge_leader = false //判断是否是leader，只有leader才能建立连接
@@ -192,13 +192,13 @@ func figure_Shard(){
 	if (Connect_success==true){
 		fmt.Println("Connect_success=true")
 	}
-	for i:=0;i<10;i++{
+	for i:=0;i<20;i++{
 		time.Sleep(time.Second)//等待10s
 		if(Judge_leader==true){
 			break
 		}else{
 			time.Sleep(time.Second)
-			if(i==4){
+			if(i==15){
 				fmt.Println("该节点不是leader，因此不用建立连接")
 				return
 			}
@@ -260,13 +260,15 @@ func receiveloop(conn *websocket.Conn, shard string, i int) {
 
 func Find_conns(flag string) int {
 	for {
-		//rand.Seed(time.Now().Unix())
-		rnd := rand.Intn(10)
+		rand.Seed(time.Now().UnixNano())
+		rnd := rand.Intn(9)
+		//fmt.Println("rnd=",rnd)
 		if Flag_conn[flag][rnd] == false {
 			return rnd
 		}
+
 		//fmt.Println("等待释放",string(flag+65),"资源")
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	return 0

@@ -202,17 +202,20 @@ func (blockExec *BlockExecutor) CheckRelayTxs( /*line *myline.Line,*/ block *typ
 		flag := int(resendTxs[i].Receiver[0]) - 65
 		shard_send[flag] = append(shard_send[flag], resendTxs[i])
 	}
+	var num int
+	num = 0
 	var tx_package []tp.TX
 	for i := 0; i < len(shard_send); i++ {
 
 		if shard_send[i] != nil {
-			num := len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
+			num = num+len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
 			tx_package =shard_send[i]
-			fmt.Println("需要发送的CheckRelayTxs交易数量：", num)
+
 			go blockExec.Send_Package(num,i,tx_package)
 
 		}
 	}
+	fmt.Println("需要发送的CheckRelayTxs交易数量：", num)
 
 	//if len(resendTxs) > 0 {
 	//	for i := 0; i < len(resendTxs); i++ {
@@ -351,7 +354,7 @@ func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 			c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
-		blockExec.Send_Message(index,rnd,c2,tx_package)
+		go blockExec.Send_Message(index,rnd,c2,tx_package)
 	}
 }
 func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,tx_package []tp.TX){
@@ -376,9 +379,6 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		return err
 	})
 
-	//c.SetWriteDeadline(time.Now().Add(sendTimeout))
-	//rawParamsJSON := json.RawMessage(paramsJSON)
-	//time1 := time.Now()
 	err1 := c.WriteJSON(rpctypes.RPCRequest{
 		JSONRPC: "2.0",
 		Sender:  "flag",
@@ -386,9 +386,6 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	})
-	//time2 := time.Now().Sub(time1)
-	//fmt.Println("send a tx use time:", time2)
-
 	if err1 != nil {
 		fmt.Println("发送err",err1)
 		c := myline.ReStart1(string(index+65),rnd)
@@ -403,7 +400,7 @@ func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,
 		myline.Flag_conn[string(index+65)][rnd] = false
 		return
 	}
-	fmt.Println("发送完毕",tx_package[0].Txtype,"共",len(tx_package),"条交易")
+	//fmt.Println("发送完毕",tx_package[0].Txtype,"共",len(tx_package),"条交易")
 	time.Sleep(time.Millisecond*100)
 	//time.Sleep(time.Millisecond*100)
 	myline.Flag_conn[string(index+65)][rnd] = false //释放资源
