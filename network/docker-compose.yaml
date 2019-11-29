@@ -1,0 +1,175 @@
+version: 2
+services:
+  ttAnode1:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttAnode1
+    hostname: ttAnode1
+    tty: true
+    volumes: ['/home/centos/network/node1/node1_data:/tendermint']
+    environment: [TASKID=A]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=2ff695efa0e1583043b8e7b7093fd1e3b72b53c1@ttAnode3:26656,c196a762eb053b21295d7d8f6b6f82fad4aa003d@ttAnode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttAnode1]
+  ttAnode2:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttAnode2
+    hostname: ttAnode2
+    tty: true
+    volumes: ['/home/centos/network/node1/node2_data:/tendermint']
+    environment: [TASKID=A]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=3f6fc5c1482f64476c1d8cc7c60204b43a2442d4@ttAnode1:26656,b1348e825c36c3ce98054fdbbd99a2104e4a66c9@ttAnode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttAnode2]
+  ttAnode3:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttAnode3
+    hostname: ttAnode3
+    tty: true
+    volumes: ['/home/centos/network/node1/node3_data:/tendermint']
+    environment: [TASKID=A]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=3f6fc5c1482f64476c1d8cc7c60204b43a2442d4@ttAnode1:26656,b1348e825c36c3ce98054fdbbd99a2104e4a66c9@ttAnode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttAnode3]
+  ttAnode4:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: ttAnode4
+    hostname: ttAnode4
+    tty: true
+    volumes: ['/home/centos/network/node1/node4_data:/tendermint']
+    environment: [TASKID=A]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=2ff695efa0e1583043b8e7b7093fd1e3b72b53c1@ttAnode3:26656,c196a762eb053b21295d7d8f6b6f82fad4aa003d@ttAnode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore ']
+    networks:
+      tendermintnet1:
+        aliases: [ttAnode4]
+  etcd1:
+    container_name: etcd1
+    image: 10.77.70.142:5000/etcd:v3.3.10
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    environment:
+      - TZ=CST-8
+      - LANG=zh_CN.UTF-8
+    networks:
+      tendermintnet1:
+        aliases:
+          - etcd1
+    command: /usr/local/bin/etcd
+      -name etcd1
+      -advertise-client-urls http://etcd1:2379
+      -listen-client-urls http://0.0.0.0:2379
+      -initial-advertise-peer-urls http://etcd1:2380
+      -listen-peer-urls http://0.0.0.0:2380
+      -initial-cluster-token docker-etcd
+      -initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380
+      -initial-cluster-state new
+    volumes:
+      - "/usr/share/ca-certificates/:/etc/ssl/certs"
+      # - "/data/config/etcd/ca-certificates/:/etc/ssl/certs"
+    labels:
+      - project.source=
+      - project.extra=public-image
+      - project.depends=
+      - project.owner=LHZ
+
+  etcd2:
+    container_name: etcd2
+    image: 10.77.70.142:5000/etcd:v3.3.10
+    ports:
+      - "3379:2379"
+      - "3380:2380"
+    environment:
+      - TZ=CST-8
+      - LANG=zh_CN.UTF-8
+    networks:
+      tendermintnet1:
+        aliases:
+          - etcd2
+    command: /usr/local/bin/etcd
+      -name etcd2
+      -advertise-client-urls http://etcd2:2379
+      -listen-client-urls http://0.0.0.0:2379
+      -initial-advertise-peer-urls http://etcd2:2380
+      -listen-peer-urls http://0.0.0.0:2380
+      -initial-cluster-token docker-etcd
+      -initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380
+      -initial-cluster-state new
+    volumes:
+      - "/usr/share/ca-certificates/:/etc/ssl/certs"
+      # - "/data/config/etcd/ca-certificates/:/etc/ssl/certs"
+    labels:
+      - project.source=
+      - project.extra=public-image
+      - project.depends=
+      - project.owner=LHZ
+  etcd3:
+    container_name: etcd3
+    image: 10.77.70.142:5000/etcd:v3.3.10
+    ports:
+      - "4379:2379"
+      - "4380:2380"
+    environment:
+      - TZ=CST-8
+      - LANG=zh_CN.UTF-8
+    networks:
+      tendermintnet1:
+        aliases:
+          - etcd3
+    command: /usr/local/bin/etcd
+      -name etcd3
+      -advertise-client-urls http://etcd3:2379
+      -listen-client-urls http://0.0.0.0:2379
+      -initial-advertise-peer-urls http://etcd3:2380
+      -listen-peer-urls http://0.0.0.0:2380
+      -initial-cluster-token docker-etcd
+      -initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380
+      -initial-cluster-state new
+    volumes:
+      - "/usr/share/ca-certificates/:/etc/ssl/certs"
+      # - "/data/config/etcd/ca-certificates/:/etc/ssl/certs"
+    labels:
+      - project.source=
+      - project.extra=public-image
+      - project.depends=
+      - project.owner=LHZ
+  etcd4:
+    container_name: etcd4
+    image: 10.77.70.142:5000/etcd:v3.3.10
+    ports:
+      - "5379:2379"
+      - "5380:2380"
+    environment:
+      - TZ=CST-8
+      - LANG=zh_CN.UTF-8
+    networks:
+      tendermintnet1:
+        aliases:
+          - etcd4
+    command: /usr/local/bin/etcd
+      -name etcd4
+      -advertise-client-urls http://etcd4:2379
+      -listen-client-urls http://0.0.0.0:2379
+      -initial-advertise-peer-urls http://etcd4:2380
+      -listen-peer-urls http://0.0.0.0:2380
+      -initial-cluster-token docker-etcd
+      -initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380
+      -initial-cluster-state new
+    volumes:
+      - "/usr/share/ca-certificates/:/etc/ssl/certs"
+      # - "/data/config/etcd/ca-certificates/:/etc/ssl/certs"
+    labels:
+      - project.source=
+      - project.extra=public-image
+      - project.depends=
+      - project.owner=LHZ
+
+networks:
+  tendermintnet1:
+    driver: host

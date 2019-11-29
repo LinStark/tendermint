@@ -47,10 +47,12 @@ func idFromInterface(idInterface interface{}) (jsonrpcid, error) {
 
 //----------------------------------------
 // REQUEST
+// REQUEST
 
 type RPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      jsonrpcid       `json:"id"`
+	Sender  string          `json:"sender"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }

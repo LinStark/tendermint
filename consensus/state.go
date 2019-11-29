@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	Re "github.com/tendermint/tendermint/reconfiguration"
 )
 
 //-----------------------------------------------------------------------------
@@ -133,6 +134,7 @@ type ConsensusState struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
 }
 
 // StateOption sets an optional parameter on the ConsensusState.
@@ -1328,7 +1330,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
-
+	flag := cs.isLeader()
+	re:=Re.NewReconfiguration()
+	re.IsLeader=flag
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
@@ -1361,7 +1365,13 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
 }
+//判断是否是Leader
+func (cs *ConsensusState) isLeader() (flag bool) {
 
+	address := cs.privValidator.GetPubKey().Address()
+	flag = cs.isProposer(address)
+	return flag
+}
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))

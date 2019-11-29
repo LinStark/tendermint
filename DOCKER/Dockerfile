@@ -13,14 +13,15 @@ ENV TMHOME /tendermint
 # jq and curl used for extracting `pub_key` from private validator while
 # deploying tendermint with Kubernetes. It is nice to have bash so the users
 # could execute bash commands.
+
 RUN apk update && \
     apk upgrade && \
     apk --no-cache add curl jq bash && \
-    addgroup tmuser && \
-    adduser -S -G tmuser tmuser -h "$TMHOME"
+    addgroup -g 1000 -S tmuser && \
+    adduser -u 100 -S -G tmuser tmuser sudoRUN -h "$TMHOME"
 
 # Run the container with tmuser by default. (UID=100, GID=1000)
-USER tmuser
+USER 100:1000
 
 # Expose the data directory as a volume since there's mutable state in there
 VOLUME [ $TMHOME ]
@@ -36,4 +37,3 @@ STOPSIGNAL SIGTERM
 
 ARG BINARY=tendermint
 COPY $BINARY /usr/bin/tendermint
-

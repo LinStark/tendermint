@@ -43,6 +43,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	re"github.com/tendermint/tendermint/reconfiguration"
 )
 
 //------------------------------------------------------------------------------
@@ -382,7 +383,8 @@ func NewNode(config *cfg.Config,
 	}
 	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
-
+	//Reconfiguration
+	Re:=re.NewReconfiguration(consensusState)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
 	consensusReactor.SetEventBus(eventBus)

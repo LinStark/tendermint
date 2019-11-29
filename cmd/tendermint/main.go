@@ -9,6 +9,7 @@ import (
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
+	//re"github.com/tendermint/tendermint/reconfiguration"
 )
 
 func main() {
@@ -37,7 +38,11 @@ func main() {
 	// can copy this file and use something other than the
 	// DefaultNewNode function
 	nodeFunc := nm.DefaultNewNode
-
+	cs:=nodeFunc
+	//a:=1
+	//if a!=1{
+	//	re.NewReconfiguration()
+	//}
 	// Create & start node
 	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
 

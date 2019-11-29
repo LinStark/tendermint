@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/tendermint/tendermint/identypes"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime/debug"
 	"sort"
@@ -586,7 +588,50 @@ func (wsc *wsConnection) Context() context.Context {
 	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
 	return wsc.ctx
 }
+func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
+	res, _ := json.Marshal(tx)//单条交易进行封装
+	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 
+	if err != nil {
+		fmt.Printf("failed to encode params: %v\n", err)
+		os.Exit(1)
+	}
+	rawParamsJSON := json.RawMessage(paramsJSON)//这就是交易封装后的内容，传递到下一层进行处理
+	rc := types.RPCRequest{
+		JSONRPC:  "2.0",
+		ID:       types.JSONRPCStringID("package"),
+		Method:   "broadcast_tx_async",
+		Params:   rawParamsJSON,
+	}
+
+
+	rpcFunc := wsc.funcMap[rc.Method]
+	if rpcFunc == nil {
+		fmt.Println(err)
+		return
+	}
+
+	ctx := &types.Context{JSONReq: &rc, WSConn: wsc}
+	args := []reflect.Value{reflect.ValueOf(ctx)}
+	if len(rc.Params) > 0 {
+		fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, rc.Params)
+		if err != nil {
+			return
+		}
+		args = append(args, fnArgs...)
+	}
+
+	returns := rpcFunc.f.Call(args)
+
+	// TODO: Need to encode args/returns to string if we want to log them
+	//wsc.Logger.Info("WSJSONRPC", "method", rc.Method)
+
+	result, err := unreflectResult(returns)
+	if result!=""{
+
+	}
+	return
+}
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
@@ -643,35 +688,51 @@ func (wsc *wsConnection) readRoutine() {
 			}
 
 			// Now, fetch the RPCFunc and execute it.
-			rpcFunc := wsc.funcMap[request.Method]
-			if rpcFunc == nil {
-				wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
-				continue
-			}
-
-			ctx := &types.Context{JSONReq: &request, WSConn: wsc}
-			args := []reflect.Value{reflect.ValueOf(ctx)}
-			if len(request.Params) > 0 {
-				fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+			if request.Sender=="flag"{
+				//解析包
+				var pack_info json.RawMessage
+				pack_info = request.Params
+				var m []identypes.TX
+				err := json.Unmarshal(pack_info,&m)
 				if err != nil {
-					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+					wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
 					continue
 				}
-				args = append(args, fnArgs...)
+				for i:=range m{
+					go wsc.handlerTx(request,m[i])
+
+				}
+			}else{
+				rpcFunc := wsc.funcMap[request.Method]
+				if rpcFunc == nil {
+					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+					continue
+				}
+
+				ctx := &types.Context{JSONReq: &request, WSConn: wsc}
+				args := []reflect.Value{reflect.ValueOf(ctx)}
+				if len(request.Params) > 0 {
+					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
+					if err != nil {
+						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+						continue
+					}
+					args = append(args, fnArgs...)
+				}
+
+				returns := rpcFunc.f.Call(args)
+
+				// TODO: Need to encode args/returns to string if we want to log them
+				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
+
+				result, err := unreflectResult(returns)
+
+				if err != nil {
+					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
+					continue
+				}
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 			}
-
-			returns := rpcFunc.f.Call(args)
-
-			// TODO: Need to encode args/returns to string if we want to log them
-			wsc.Logger.Info("WSJSONRPC", "method", request.Method)
-
-			result, err := unreflectResult(returns)
-			if err != nil {
-				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
-				continue
-			}
-
-			wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 		}
 	}
 }
