@@ -21,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	Re "github.com/tendermint/tendermint/reconfiguration"
+	//Re "github.com/tendermint/tendermint/reconfiguration"
 )
 
 //-----------------------------------------------------------------------------
@@ -1330,9 +1330,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
-	flag := cs.isLeader()
-	re:=Re.NewReconfiguration()
-	re.IsLeader=flag
+	//flag := cs.isLeader()
+	//re:=Re.NewReconfiguration()
+	//re.IsLeader=flag
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error

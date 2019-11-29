@@ -13,7 +13,7 @@ import (
 	"os"
 	"strconv"
 	"time"
-	cs "github.com/tendermint/tendermint/consensus"
+	//cs "github.com/tendermint/tendermint/consensus"
 )
 
 type Reconfiguration struct {
@@ -25,7 +25,7 @@ type Reconfiguration struct {
 	MoveCount int
 	Txs    [][]Tx
 	IsLeader bool
-	cs      *cs.ConsensusState
+	//Cs      *cs.ConsensusState
 }
 const(
 	sendTimeout =time.Second*10
@@ -40,9 +40,6 @@ type Nodeinfo struct {
 	ChainId string
 }
 var Ticker = time.NewTicker(time.Second*10)
-func init(){
-	go PeriodReconfiguration()
-}
 
 func NewReconfiguration()*Reconfiguration{
 	return &Reconfiguration{
@@ -50,11 +47,11 @@ func NewReconfiguration()*Reconfiguration{
 		NodeCount:16,
 		MoveCount:10,
 		IsLeader:false,
+		//Cs:cs,
 	}
 }
-func PeriodReconfiguration(){
+func (Re *Reconfiguration)PeriodReconfiguration(){
 	//定时器实现
-	Re:=NewReconfiguration()
 	for{
 		select {
 		case <- Ticker.C:

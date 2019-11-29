@@ -38,7 +38,6 @@ func main() {
 	// can copy this file and use something other than the
 	// DefaultNewNode function
 	nodeFunc := nm.DefaultNewNode
-	cs:=nodeFunc
 	//a:=1
 	//if a!=1{
 	//	re.NewReconfiguration()
