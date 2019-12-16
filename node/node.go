@@ -43,6 +43,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	//line "github.com/tendermint/tendermint/line"
 )
 
 //------------------------------------------------------------------------------
@@ -261,6 +262,7 @@ func NewNode(config *cfg.Config,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
+
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {
@@ -410,7 +412,6 @@ func NewNode(config *cfg.Config,
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
-
 	if !config.P2P.AllowDuplicateIP {
 		connFilters = append(connFilters, p2p.ConnDuplicateIPFilter())
 	}
@@ -464,6 +465,7 @@ func NewNode(config *cfg.Config,
 		p2p.WithMetrics(p2pMetrics),
 		p2p.SwitchPeerFilters(peerFilters...),
 	)
+
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -518,14 +520,6 @@ func NewNode(config *cfg.Config,
 			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
 	}
-	//Etcd
-	//EtcdCfg:=Etcd.NewConfig(config.Etcd.EtcdName,config.Etcd.EtcdDir,config.Etcd.EtcdCluster)
-	//EtcdServer:=Etcd.NewServer(EtcdCfg)
-	//go EtcdServer.Start()
-	//Reconfiguration
-	//ReconfigurationLogger := logger.With("module", "Reconfiguration")
-	//Re:= re.NewReconfiguration(consensusState,ReconfigurationLogger,config.ReConfiguration)
-	//go Re.PeriodReconfiguration()
 
 	node := &Node{
 		config:        config,
@@ -582,6 +576,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// Start the transport.
+
 	addr, err := p2p.NewNetAddressStringWithOptionalID(n.config.P2P.ListenAddress)
 	if err != nil {
 		return err
@@ -594,6 +589,7 @@ func (n *Node) OnStart() error {
 
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
+
 	if err != nil {
 		return err
 	}
@@ -679,6 +675,7 @@ func (n *Node) ConfigureRPC() {
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
 	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	//fmt.Println(listenAddrs)
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
 
@@ -690,6 +687,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
+		//fmt.Println("监听地址",listenAddr)
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec,

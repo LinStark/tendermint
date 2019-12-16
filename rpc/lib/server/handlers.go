@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/tendermint/tendermint/identypes"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -19,11 +20,28 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	myline "github.com/tendermint/tendermint/line"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
+//var wg sync.WaitGroup
+var count = 0
+var addcount= 0
+var addset [][] identypes.TX
+var sendTimeout = 10 * time.Second
+var calculate_count = 0
+var calculate_time time.Time
+//
+//func lis(flag string) {
+//	if flag == "flag" {
+//		count++
+//		time.Sleep(time.Second)
+//		fmt.Println("接受跨片交易数量:", count)
+//	}
+//}
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
@@ -116,6 +134,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 		}
 
 		var request types.RPCRequest
+
 		err = json.Unmarshal(b, &request)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshalling request")))
@@ -140,6 +159,9 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 
 		ctx := &types.Context{JSONReq: &request, HTTPReq: r}
 		args := []reflect.Value{reflect.ValueOf(ctx)}
+		//在这里先做测试，看看效果。如果不行的话再将发送的信息进行条条处理
+
+
 		if len(request.Params) > 0 {
 			fnArgs, err := jsonParamsToArgs(rpcFunc, cdc, request.Params)
 			if err != nil {
@@ -149,8 +171,8 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			args = append(args, fnArgs...)
 		}
 
-		returns := rpcFunc.f.Call(args)//调用接口
-
+		returns := rpcFunc.f.Call(args)
+		//fmt.Println("method:", request.Method)
 		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)
 		if err != nil {
@@ -158,6 +180,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
+		//}
 	}
 }
 
@@ -418,9 +441,11 @@ const (
 // connection, and the event switch for subscribing to events.
 //
 // In case of an error, the connection is stopped.
+
 type wsConnection struct {
 	cmn.BaseService
 
+	wsline     *myline.Line
 	remoteAddr string
 	baseConn   *websocket.Conn
 	writeChan  chan types.RPCResponse
@@ -455,13 +480,16 @@ type wsConnection struct {
 // disconnect. see https://github.com/gorilla/websocket/issues/97
 func NewWSConnection(
 	baseConn *websocket.Conn,
+	wsline *myline.Line,
 	funcMap map[string]*RPCFunc,
 	cdc *amino.Codec,
 	options ...func(*wsConnection),
 ) *wsConnection {
 	baseConn.SetReadLimit(maxBodyBytes)
+
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
+		wsline:            wsline,
 		baseConn:          baseConn,
 		funcMap:           funcMap,
 		cdc:               cdc,
@@ -473,6 +501,7 @@ func NewWSConnection(
 	for _, option := range options {
 		option(wsc)
 	}
+
 	wsc.BaseService = *cmn.NewBaseService(nil, "wsConnection", wsc)
 	return wsc
 }
@@ -521,7 +550,7 @@ func PingPeriod(pingPeriod time.Duration) func(*wsConnection) {
 // blocks until the connection closes.
 func (wsc *wsConnection) OnStart() error {
 	wsc.writeChan = make(chan types.RPCResponse, wsc.writeChanCapacity)
-
+	addset = make([][]identypes.TX,myline.Shard)
 	// Read subscriptions/unsubscriptions to events
 	go wsc.readRoutine()
 	// Write responses, BLOCKING.
@@ -588,7 +617,83 @@ func (wsc *wsConnection) Context() context.Context {
 	wsc.ctx, wsc.cancel = context.WithCancel(context.Background())
 	return wsc.ctx
 }
+
+func (wsc *wsConnection)Send_Package(num int,i int,tx_package []identypes.TX){
+	var c2 *websocket.Conn
+	var rnd int
+	var key string
+	var index int
+	if num>0{
+		//fmt.Println("该次处理addtx数量为",num)
+		if tx_package[0].Txtype=="addtx"{
+			key=tx_package[0].Sender
+
+			//fmt.Println("发往分片",key)
+			c2,rnd = myline.UseConnect(key,"ip")
+		}
+		index = int(key[0])-65
+		wsc.Send_Message(index,rnd,c2,tx_package)
+
+		addset[i] =append(addset[i][:0],addset[i][len(addset[i]):]...)
+		myline.Send_flag[i]=true
+	}
+}
+func (wsc *wsConnection)Send_Message(index int,rnd int,c *websocket.Conn,tx_package []identypes.TX){
+
+	res, _ := json.Marshal(tx_package)
+	rawParamsJSON := json.RawMessage(res)
+	//第一层打包结束
+
+
+	//paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+	//if err != nil {
+	//	fmt.Printf("failed to encode params: %v\n", err)
+	//	os.Exit(1)
+	//}
+	c.SetPingHandler(func(message string) error {
+		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
+		if err == websocket.ErrCloseSent {
+			return nil
+		} else if e, ok := err.(net.Error); ok && e.Temporary() {
+			return nil
+		}
+		return err
+	})
+	c.SetWriteDeadline(time.Now().Add(sendTimeout))
+	//rawParamsJSON := json.RawMessage(paramsJSON)
+	err1 := c.WriteJSON(types.RPCRequest{
+		JSONRPC: "2.0",
+		Sender:  "flag",
+		ID:      types.JSONRPCStringID("addtx"),
+		Method:  "broadcast_tx_async",
+		Params:  rawParamsJSON,
+	})
+	if err1 != nil {
+		c := myline.ReStart1(string(index+65),rnd)
+		c.WriteJSON(types.RPCRequest{
+			JSONRPC: "2.0",
+			Sender:  "flag",
+			ID:      types.JSONRPCStringID("relay"),
+			Method:  "broadcast_tx_async",
+			Params:  rawParamsJSON,
+		})
+		time.Sleep(time.Millisecond*10)
+		myline.Flag_conn[string(index+65)][rnd] = false
+
+		return
+	}
+	time.Sleep(time.Millisecond*10)
+
+	//time.Sleep(time.Millisecond*100)
+	//time.Sleep(time.Millisecond*10)
+	myline.Flag_conn[string(index+65)][rnd] = false //释放资源
+
+}
+
+// Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
+	//time.Sleep(time.Millisecond*10)
+	//fmt.Println("单条交易内容",tx)
 	res, _ := json.Marshal(tx)//单条交易进行封装
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 
@@ -599,12 +704,14 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	rawParamsJSON := json.RawMessage(paramsJSON)//这就是交易封装后的内容，传递到下一层进行处理
 	rc := types.RPCRequest{
 		JSONRPC:  "2.0",
+		Sender:   tx.Sender,
+		Receiver: tx.Receiver,
 		ID:       types.JSONRPCStringID("package"),
 		Method:   "broadcast_tx_async",
 		Params:   rawParamsJSON,
 	}
-
-
+	//fmt.Println("单条交易",rc)
+	//解析出单个交易进行单个交易模式处理
 	rpcFunc := wsc.funcMap[rc.Method]
 	if rpcFunc == nil {
 		fmt.Println(err)
@@ -616,6 +723,7 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	if len(rc.Params) > 0 {
 		fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, rc.Params)
 		if err != nil {
+			//fmt.Println("返回错误信息1",err)
 			return
 		}
 		args = append(args, fnArgs...)
@@ -627,12 +735,70 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 	//wsc.Logger.Info("WSJSONRPC", "method", rc.Method)
 
 	result, err := unreflectResult(returns)
-	if result!=""{
+
+	if err != nil {
+		f := fmt.Sprintf("%s", err)
+		if f=="Mempool is full"{
+			return
+		}else{
+			if tx.Txtype=="relaytx"{
+				tx.Txtype="addtx"
+				res, _ := json.Marshal(tx)//单条交易进行封装
+				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
+
+				if err != nil {
+					fmt.Printf("failed to encode params: %v\n", err)
+					os.Exit(1)
+				}
+				rawParamsJSON := json.RawMessage(paramsJSON)//这就是交易封装后的内容，传递到下一层进行处理
+				rc := types.RPCRequest{
+					JSONRPC:  "2.0",
+					Sender:   tx.Sender,
+					Receiver: tx.Receiver,
+					ID:       types.JSONRPCStringID("addtx"),
+					Method:   "broadcast_tx_async",
+					Params:   rawParamsJSON,
+				}
+				c,rnd:=myline.UseConnect(tx.Sender,"ip")
+				c.SetPingHandler(func(message string) error {
+					err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
+					if err == websocket.ErrCloseSent {
+						return nil
+					} else if e, ok := err.(net.Error); ok && e.Temporary() {
+						return nil
+					}
+					return err
+				})
+
+
+				err1:=c.WriteJSON(rc)
+
+				if err1 != nil {
+
+					myline.ReStart1(tx.Sender,rnd)
+					c.WriteJSON(rc)
+					time.Sleep(time.Millisecond*20)
+					myline.Flag_conn[tx.Sender][rnd] = false
+					return
+				}
+				time.Sleep(time.Millisecond*20)
+				myline.Flag_conn[tx.Sender][rnd] = false
+			}
+			return
+		}
 
 	}
+
+	count=count+1
+	if result==""{
+
+	}
+	//fmt.Println("处理了",count,"条交易")
+	//wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 	return
+	//wg.Done()
 }
-// Read from the socket and subscribe to or unsubscribe from events
+
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -651,6 +817,7 @@ func (wsc *wsConnection) readRoutine() {
 	wsc.baseConn.SetPongHandler(func(m string) error {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
 	})
+	//建立连接
 
 	for {
 		select {
@@ -679,7 +846,7 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.WriteRPCResponse(types.RPCParseError(types.JSONRPCStringID(""), errors.Wrap(err, "Error unmarshaling request")))
 				continue
 			}
-
+			//fmt.Println("调用了什么？？？111",request.Method)
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == types.JSONRPCStringID("") {
@@ -687,7 +854,21 @@ func (wsc *wsConnection) readRoutine() {
 				continue
 			}
 
-			// Now, fetch the RPCFunc and execute it.
+			//if(request.Method=="broadcast_tx_commit_trans") {
+			//	//tx := types.RPCRequest{
+			//	//	JSONRPC: "2.0",
+			//	//	Sender:  request.Sender,
+			//	//	Receiver: request.Receiver,
+			//	//	ID:      types.JSONRPCStringID("trans"),
+			//	//	Method:  "broadcast_tx_async",
+			//	//	Params:  request.Params,
+			//	//}
+			//	if err:=wsc.wsline.SendMessageCommit(request.Params,request.Receiver,request.Sender);err!=nil{
+			//		wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+			//		continue
+			//	}
+			//	wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, "ok"))
+			//}else{
 			if request.Sender=="flag"{
 				//解析包
 				var pack_info json.RawMessage
@@ -699,13 +880,27 @@ func (wsc *wsConnection) readRoutine() {
 					continue
 				}
 				for i:=range m{
-					go wsc.handlerTx(request,m[i])
+					//if(i%5==0){
+					//	time.Sleep(time.Millisecond*10)
+					//}
+					//wg.Add(1)
+					//解析成一条条交易并且封装成json让别人解析
+					wsc.handlerTx(request,m[i])
+
+					//go lis(request.Sender)
 
 				}
+				//wg.Wait()
+				//fmt.Println("处理",count,"条交易")
+				count=0
 			}else{
+				time_start := time.Now()
 				rpcFunc := wsc.funcMap[request.Method]
+
+				//fmt.Println("调用了什么？？？",request.Method)
 				if rpcFunc == nil {
 					wsc.WriteRPCResponse(types.RPCMethodNotFoundError(request.ID))
+					fmt.Println("返回错误信息15",err)
 					continue
 				}
 
@@ -715,6 +910,7 @@ func (wsc *wsConnection) readRoutine() {
 					fnArgs, err := jsonParamsToArgs(rpcFunc, wsc.cdc, request.Params)
 					if err != nil {
 						wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+						fmt.Println("返回错误信息12",err)
 						continue
 					}
 					args = append(args, fnArgs...)
@@ -726,13 +922,40 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.Logger.Info("WSJSONRPC", "method", request.Method)
 
 				result, err := unreflectResult(returns)
-
+				//count++
+				//fmt.Println("处理了未跨片条",count,"交易")
 				if err != nil {
 					wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
 					continue
 				}
+				time_end:=time.Now()
+				time_spend := time_end.Sub(time_start)
+
+				calculate_time =calculate_time.Add(time_spend)
+				calculate_count++
+				if calculate_count%1000==0{
+					fmt.Println("1000笔交易花费时间",time.Now().Sub(calculate_time))
+					calculate_time = time.Now()
+				}
 				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 			}
+
+
+			//}
+			//}if的终结点
+			//	fmt.Println("request.params")
+			//	fmt.Println(request.Params)
+			//	defaultShardIp:=Get(request.Receiver)
+			//	port:=[]string{"26657","36657","46657"}
+			//	defaultShardIp = "http://"+defaultShardIp+":"+port[request.Flag]
+			//	Send2TEN2(defaultShardIp,tx)
+			//	fmt.Println("接收到的方法：",request.Method)
+			//	fmt.Println("leader要发送给分片的ip：",defaultShardIp)
+			//	wsc.Stop()
+			//	return
+			//}else{
+			// Now, fetch the RPCFunc and execute it.
+
 		}
 	}
 }
@@ -842,15 +1065,29 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 		wm.logger.Error("Failed to upgrade to websocket connection", "err", err)
 		return
 	}
+	type node struct {
+		target map[string][]string
+	}
+	endpoints := &node{
+		target: make(map[string][]string, 16),
+	}
 
+	endpoints.target["A"] = []string{"192.168.5.56:26657", "192.168.5.56:36657", "192.168.5.56:46657", "192.168.5.56:56657"}
+	endpoints.target["B"] = []string{"192.168.5.57:26657", "192.168.5.57:36657", "192.168.5.57:46657", "192.168.5.57:56657"}
+	endpoints.target["C"] = []string{"192.168.5.58:26657", "192.168.5.58:36657", "192.168.5.58:46657", "192.168.5.58:56657"}
+	endpoints.target["D"] = []string{"192.168.5.60:26657", "192.168.5.60:36657", "192.168.5.60:46657", "192.168.5.60:56657"}
+
+	wsline := myline.NewLine(endpoints.target)
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
+	con := NewWSConnection(wsConn, wsline, wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
+
 	err = con.Start() // Blocking
 	if err != nil {
 		wm.logger.Error("Error starting connection", "err", err)
 	}
+
 }
 
 // rpc.websocket

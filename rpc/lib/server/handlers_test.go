@@ -3,6 +3,7 @@ package rpcserver_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/log"
 	rs "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -170,13 +171,14 @@ func TestUnknownRPCPath(t *testing.T) {
 
 func TestWebsocketManagerHandler(t *testing.T) {
 	s := newWSServer()
+
 	defer s.Close()
 
 	// check upgrader works
 	d := websocket.Dialer{}
+
 	c, dialResp, err := d.Dial("ws://"+s.Listener.Addr().String()+"/websocket", nil)
 	require.NoError(t, err)
-
 	if got, want := dialResp.StatusCode, http.StatusSwitchingProtocols; got != want {
 		t.Errorf("dialResp.StatusCode = %q, want %q", got, want)
 	}
@@ -191,6 +193,7 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	err = c.ReadJSON(&resp)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
+
 }
 
 func newWSServer() *httptest.Server {
@@ -202,6 +205,6 @@ func newWSServer() *httptest.Server {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
-
+	fmt.Println(wm.WebsocketHandler)
 	return httptest.NewServer(mux)
 }

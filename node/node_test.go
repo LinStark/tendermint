@@ -258,7 +258,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		tx := cmn.RandBytes(txLength)
 		err := mempool.CheckTx(tx, nil)
 		assert.NoError(t, err)
-}
+	}
 
 	blockExec := sm.NewBlockExecutor(
 		stateDB,
