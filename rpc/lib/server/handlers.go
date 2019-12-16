@@ -149,7 +149,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			args = append(args, fnArgs...)
 		}
 
-		returns := rpcFunc.f.Call(args)
+		returns := rpcFunc.f.Call(args)//调用接口
 
 		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
 		result, err := unreflectResult(returns)

@@ -503,13 +503,15 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 		}
 	}
 
-	err := r.Switch.DialPeerWithAddress(addr, false)
+	err := r.Switch.DialPeerWithAddress(addr, true)
+	r.Logger.Error("111 failed", "addr", addr, "err", err, "attempts", attempts)
 	if err != nil {
 		if _, ok := err.(p2p.ErrCurrentlyDialingOrExistingAddress); ok {
 			return
 		}
 
 		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
+		r.Logger.Error("i am here")
 		markAddrInBookBasedOnErr(addr, r.book, err)
 		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
 			r.attemptsToDial.Delete(addr.DialString())

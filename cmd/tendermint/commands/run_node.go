@@ -7,6 +7,7 @@ import (
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	nm "github.com/tendermint/tendermint/node"
+	re "github.com/tendermint/tendermint/reconfiguration"
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -51,10 +52,12 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			n, err := nodeProvider(config, logger)
+
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}
-
+			Re:=re.NewReconfiguration(n.ConsensusState(),n.Logger,n.Config().ReConfiguration)
+			go Re.PeriodReconfiguration()
 			// Stop upon receiving SIGTERM or CTRL-C.
 			cmn.TrapSignal(logger, func() {
 				if n.IsRunning() {

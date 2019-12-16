@@ -1366,7 +1366,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 //判断是否是Leader
-func (cs *ConsensusState) isLeader() (flag bool) {
+func (cs *ConsensusState) IsLeader() (flag bool) {
 
 	address := cs.privValidator.GetPubKey().Address()
 	flag = cs.isProposer(address)

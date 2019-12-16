@@ -67,6 +67,8 @@ type Config struct {
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	ReConfiguration *ReConfigurationConfig `mapstructure:"reconfiguration"`
+	Etcd            *EtcdConfig            `mapstructure:"etcd"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -278,10 +280,20 @@ func DefaultLogLevel() string {
 func DefaultPackageLogLevels() string {
 	return fmt.Sprintf("main:info,state:info,*:%s", DefaultLogLevel())
 }
-
 //-----------------------------------------------------------------------------
-// RPCConfig
-
+// ReConfigurationConfig
+type ReConfigurationConfig struct{
+	ShardCount string `mapstructure:"shardcount"`
+	NodeCount  string `mapstructure:"nodecount"`
+	MoveCount  string `mapstructure:"movecount"`
+}
+//-----------------------------------------------------------------------------
+// EtcdConfig
+type EtcdConfig struct{
+		EtcdName string `mapstructure:"etcdname"`
+		EtcdDir  string `mapstructure:"etcddir"`
+		EtcdCluster string `mapstructure:"etcdcluster"`
+}
 // RPCConfig defines the configuration options for the Tendermint RPC server
 type RPCConfig struct {
 	RootDir string `mapstructure:"home"`

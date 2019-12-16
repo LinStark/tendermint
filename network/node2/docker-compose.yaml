@@ -1,0 +1,49 @@
+services:
+  TTBNode1:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTBNode1
+    hostname: TTBNode1
+    tty: 'true'
+    volumes: ['/home/centos/network/node2/node1_data:/tendermint']
+    environment: [TASKID=B]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=d0b944943d0335097528807305e9ac691d6293cc@TTBNode3:26656,944c7e7069672e0202ffa5a041eff27e16a8ca08@TTBNode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttBnode1]
+  TTBNode2:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTBNode2
+    hostname: TTBNode2
+    tty: 'true'
+    volumes: ['/home/centos/network/node2/node2_data:/tendermint']
+    environment: [TASKID=B]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=760cd0ff53865a97120754f9b70c20beb74d3227@TTBNode1:26656,3558620ddb1e086c6a2828008172d2c2c9de6cbf@TTBNode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttBnode2]
+  TTBNode3:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTBNode3
+    hostname: TTBNode3
+    tty: 'true'
+    volumes: ['/home/centos/network/node2/node3_data:/tendermint']
+    environment: [TASKID=B]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=760cd0ff53865a97120754f9b70c20beb74d3227@TTBNode1:26656,3558620ddb1e086c6a2828008172d2c2c9de6cbf@TTBNode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttBnode3]
+  TTBNode4:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTBNode4
+    hostname: TTBNode4
+    tty: 'true'
+    volumes: ['/home/centos/network/node2/node4_data:/tendermint']
+    environment: [TASKID=B]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=d0b944943d0335097528807305e9ac691d6293cc@TTBNode3:26656,944c7e7069672e0202ffa5a041eff27e16a8ca08@TTBNode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttBnode4]

@@ -471,13 +471,15 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 // If we're currently dialing this address or it belongs to an existing peer,
 // ErrCurrentlyDialingOrExistingAddress is returned.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
+	fmt.Println("ip:",addr.IP)
 	if sw.IsDialingOrExistingAddress(addr) {
+
 		return ErrCurrentlyDialingOrExistingAddress{addr.String()}
 	}
 
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
-
+	fmt.Println("进来了")
 	return sw.addOutboundPeerWithConfig(addr, sw.config, persistent)
 }
 

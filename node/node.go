@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
@@ -43,7 +43,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	re"github.com/tendermint/tendermint/reconfiguration"
 )
 
 //------------------------------------------------------------------------------
@@ -383,8 +382,7 @@ func NewNode(config *cfg.Config,
 	}
 	consensusReactor := cs.NewConsensusReactor(consensusState, fastSync, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
-	//Reconfiguration
-	Re:=re.NewReconfiguration(consensusState)
+
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
 	consensusReactor.SetEventBus(eventBus)
@@ -520,6 +518,14 @@ func NewNode(config *cfg.Config,
 			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
 	}
+	//Etcd
+	//EtcdCfg:=Etcd.NewConfig(config.Etcd.EtcdName,config.Etcd.EtcdDir,config.Etcd.EtcdCluster)
+	//EtcdServer:=Etcd.NewServer(EtcdCfg)
+	//go EtcdServer.Start()
+	//Reconfiguration
+	//ReconfigurationLogger := logger.With("module", "Reconfiguration")
+	//Re:= re.NewReconfiguration(consensusState,ReconfigurationLogger,config.ReConfiguration)
+	//go Re.PeriodReconfiguration()
 
 	node := &Node{
 		config:        config,

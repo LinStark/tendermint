@@ -1,0 +1,49 @@
+services:
+  TTCNode1:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTCNode1
+    hostname: TTCNode1
+    tty: 'true'
+    volumes: ['/home/centos/network/node3/node1_data:/tendermint']
+    environment: [TASKID=C]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=848d730439ecb34c95b62f8baa49f2864a733670@TTCNode3:26656,c5d5a1e2adcd2162da5f8e9565917f5fe9e80cf2@TTCNode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttCnode1]
+  TTCNode2:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTCNode2
+    hostname: TTCNode2
+    tty: 'true'
+    volumes: ['/home/centos/network/node3/node2_data:/tendermint']
+    environment: [TASKID=C]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=214513831a47835134a22262ceddc4bbdd5a1fe3@TTCNode1:26656,392c7ced9eb82818c89cedaa580f9970eb5f1976@TTCNode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttCnode2]
+  TTCNode3:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTCNode3
+    hostname: TTCNode3
+    tty: 'true'
+    volumes: ['/home/centos/network/node3/node3_data:/tendermint']
+    environment: [TASKID=C]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=214513831a47835134a22262ceddc4bbdd5a1fe3@TTCNode1:26656,392c7ced9eb82818c89cedaa580f9970eb5f1976@TTCNode4:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttCnode3]
+  TTCNode4:
+    image: 10.77.70.142:5000/tendermint:v0.4
+    container_name: TTCNode4
+    hostname: TTCNode4
+    tty: 'true'
+    volumes: ['/home/centos/network/node3/node4_data:/tendermint']
+    environment: [TASKID=C]
+    entrypoint: [sh, -c, 'tendermint node --p2p.persistent_peers=848d730439ecb34c95b62f8baa49f2864a733670@TTCNode3:26656,c5d5a1e2adcd2162da5f8e9565917f5fe9e80cf2@TTCNode2:26656
+        --moniker=`hostname` --proxy_app=persistent_kvstore --consensus.create_empty_blocks=false']
+    networks:
+      tendermintnet1:
+        aliases: [ttCnode4]

@@ -86,6 +86,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	sc := proxy.SecureClient(node, cert)
 
 	logger.Info("Starting proxy...")
+	fmt.Println("Starting proxy...")
 	err = proxy.StartProxy(sc, listenAddr, logger, maxOpenConnections)
 	if err != nil {
 		return cmn.ErrorWrap(err, "starting proxy")

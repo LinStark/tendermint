@@ -165,7 +165,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	// simulate s1 having a public IP by creating a remote peer with the same ID
 	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: cfg}
 	rp.Start()
-
+	fmt.Println(rp.addr)
 	// addr should be rejected in addPeer based on the same ID
 	err := s1.DialPeerWithAddress(rp.Addr(), false)
 	if assert.Error(t, err) {

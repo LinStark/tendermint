@@ -21,6 +21,10 @@ func assertMempool(txn txNotifier) sm.Mempool {
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
+	a:=1
+	if(a!=1){
+		//cs.consensusLogger()
+	}
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
