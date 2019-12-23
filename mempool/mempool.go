@@ -270,12 +270,12 @@ func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
 	
 }
 func (mem *Mempool) UpdaterDB()([]tp.TX){
-	//检查rDB中的状态，如果有一个区块高度是100，还没有被删除，那么需要重新发送tx，让其被确认
+	//检查rDB中的状态，如果有一个区块高度是20，还没有被删除，那么需要重新发送tx，让其被确认
 	
 	var stx []tp.TX	
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
 		if mem.rDB.relaytx!=nil{
-			if mem.rDB.relaytx[i].Height == 20{
+			if mem.rDB.relaytx[i].Height >= 10{
 				stx= append(stx,mem.rDB.relaytx[i].Tx)
 				mem.rDB.relaytx[i].Height=0	
 			}else {

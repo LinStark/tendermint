@@ -1417,7 +1417,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
-	lastLeaderAddress := cs.state.Validators.GetProposer().Address
+	//判断leader是否换了的依据
+	//lastLeaderAddress := cs.state.Validators.GetProposer().Address
 	flag := cs.isLeader()
 
 	// Execute and commit the block, update and save the state, and update the mempool.
@@ -1447,6 +1448,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Schedule Round0 to start soon.
 	cs.scheduleRound0(&cs.RoundState)
 
+	//leader数据库不用再重建
+	/*
 	if !cs.isEqual(lastLeaderAddress) {
 		if cs.isLeader() {
 			e := useetcd.NewEtcd()
@@ -1455,6 +1458,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 			cs.reactorViaCheckpoint(height)
 		}
 	}
+	*/
 	// By here,
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
@@ -1509,7 +1513,7 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []tp.TX {
 				var t tp.TX
 				json.Unmarshal(temptx, &t)
 				if t.Txtype == "relaytx" {
-					//tblock.Shard="A" //TODO!!!!!!!!!!!!
+					
 					if t.Sender == tblock.Shard {
 						//如果是relaytx，并且是当前分片发起的，则加入到带确认数组
 						waitComTxs = append(waitComTxs, t)
