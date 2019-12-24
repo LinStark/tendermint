@@ -1984,6 +1984,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 	return
 }
+//验证list是否相同的函数
+//TODO 目前是要求全部相同，后续是否改成包含关系
 func compareRelaylist(t tp.TX,allTxs []tp.TX)(bool) {
 	var contentByte []byte
 	for i:=0;i<len(allTxs);i++{
