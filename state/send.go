@@ -13,17 +13,19 @@ import (
 func  conver2cptx(cpTxs []tp.TX,height int64) tp.TX{
 	
 	var content []string
+	var contentByte []byte
 	fmt.Println("cpTxs length is ",len(cpTxs))
 	for i:=0;i<len(cpTxs);i++{
 		marshalTx ,_:=json.Marshal(cpTxs[i])
+		contentByte = append(contentByte,marshalTx...)
 		content=append(content,string(marshalTx))
 	}
 	cptx :=&tp.TX{
 		Txtype:"checkpoint",
 		Sender: strconv.FormatInt(height,10), //用sender记录高度
 		Receiver: "",
-		ID      : sha256.Sum256([]byte("checkpoint")),
-		Content :content} 
+		ID      : sha256.Sum256(contentByte),
+		Content : content} 
     return *cptx
 }
 func Sendcptx(tx tp.TX, flag int) {

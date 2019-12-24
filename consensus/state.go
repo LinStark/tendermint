@@ -1818,7 +1818,6 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, err
 
 func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
 	cs.Logger.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "valIndex", vote.ValidatorIndex, "csHeight", cs.Height)
-
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
 	if vote.Height+1 == cs.Height {
@@ -1860,6 +1859,30 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
 		return
 	}
+	//如果交易中包含checkpoint，检查checkpoint本地的relay list中保存的是否完全一致。
+	//如果不一致投票为false
+	block := cs.ProposalBlock
+	if block.Data.Txs != nil {
+		for i := 0; i < len(block.Data.Txs); i++ {
+			data := block.Data.Txs[i]
+			encodeStr := hex.EncodeToString(data)
+			temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
+			//fmt.Println(string(temptx))
+			var t tp.TX
+			json.Unmarshal(temptx, &t)
+			if t.Txtype == "checkpoint" {
+				allTxs := cs.blockExec.GetAllTxs()
+				added = compareRelaylist(t,allTxs)
+				//如果是checkpoint，检查是否一致
+				break
+			}
+		}
+	}
+	if !added {
+		// Either duplicate, or error upon cs.Votes.AddByIndex()
+		return
+	}
+	
 
 	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
@@ -1960,6 +1983,17 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	}
 
 	return
+}
+func compareRelaylist(t tp.TX,allTxs []tp.TX)(bool) {
+	var contentByte []byte
+	for i:=0;i<len(allTxs);i++{
+		//得到本身的relaylist的数据
+		marshalTx ,_:=json.Marshal(allTxs[i])
+		contentByte = append(contentByte,marshalTx...)
+	}
+	localhash := sha256.Sum256(contentByte)
+	result :=bytes.Compare(localhash,t.ID)
+	return result
 }
 
 func (cs *ConsensusState) signVote(type_ types.SignedMsgType, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
