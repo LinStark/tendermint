@@ -1879,7 +1879,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		}
 	}
 	if !added {
-		// Either duplicate, or error upon cs.Votes.AddByIndex()
+		// 如果验证失败，则返回
 		return
 	}
 	
