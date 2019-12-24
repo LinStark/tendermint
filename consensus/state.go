@@ -1986,15 +1986,20 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 }
 //验证list是否相同的函数
 //TODO 目前是要求全部相同，后续是否改成包含关系
-func compareRelaylist(t tp.TX,allTxs []tp.TX)(bool) {
+func compareRelaylist(t tp.TX,allTxs []tp.TX)(result bool) {
 	var contentByte []byte
 	for i:=0;i<len(allTxs);i++{
 		//得到本身的relaylist的数据
 		marshalTx ,_:=json.Marshal(allTxs[i])
 		contentByte = append(contentByte,marshalTx...)
 	}
+	
 	localhash := sha256.Sum256(contentByte)
-	result :=bytes.Compare(localhash,t.ID)
+	if localhash == t.ID{
+		result = true
+	}else{
+		result = false
+	}
 	return result
 }
 

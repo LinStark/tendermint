@@ -275,7 +275,7 @@ func (mem *Mempool) UpdaterDB()([]tp.TX){
 	var stx []tp.TX	
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
 		if mem.rDB.relaytx!=nil{
-			if mem.rDB.relaytx[i].Height >= 10{
+			if (mem.rDB.relaytx[i].Height == 10)||( mem.rDB.relaytx[i].Height == 20) {
 				stx= append(stx,mem.rDB.relaytx[i].Tx)
 				mem.rDB.relaytx[i].Height=0	
 			}else {

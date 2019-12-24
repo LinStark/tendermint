@@ -355,8 +355,7 @@ func (blockExec *BlockExecutor) SendMessage(index int, rnd int, c *websocket.Con
 	for i:=0;i<len(tx_package);i++{
 		
 		client := *myclient.NewHTTP(name,"/websocket")
-		res, _ := json.Marshal(tx_package[i])
-		go client.BroadcastTxAsync(res)
+		go client.BroadcastTxAsync(tx_package)
 	}
 }
 func (blockExec *BlockExecutor) Send_Message(index int, rnd int, c *websocket.Conn, tx_package []tp.TX) {
