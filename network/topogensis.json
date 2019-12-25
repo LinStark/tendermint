@@ -3,114 +3,224 @@
                 "ShardName":"0",
                 "NodeName":"TTANode1",
                 "Coordinate":"0",
-                "Peerid":"7688351078294959d9b1538b531eefa31979e5f1",
+                "Peerid":"a3a4ccf8c222a59b0799d2d63dcabfe3b98bb854",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode2",
                 "Coordinate":"1",
-                "Peerid":"36e3933d40d48d7bb1844aac64bb027b0356448f",
+                "Peerid":"adf4b0ad4e8e29ccffc2f34a46aac74efcbeb35c",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode3",
                 "Coordinate":"2",
-                "Peerid":"9308ea5aade60337b485d39ee4eee7e9951195d7",
+                "Peerid":"924fa660764754f0569a9343551cbddc3c402d9a",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode4",
                 "Coordinate":"3",
-                "Peerid":"5aa1f47eb0079356a13ccfee21ba333800c7bc18",
+                "Peerid":"acad8ec1c99a3d9cb4fb071c09a269378f8eb120",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode5",
                 "Coordinate":"4",
-                "Peerid":"12084477fee06eb793869beb14d88b09fb9eda12",
+                "Peerid":"09239355db64e3e1d9ff9b480862ced20efa27c8",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode6",
                 "Coordinate":"5",
-                "Peerid":"f2f5de6a5fa534e8bf613f81c7fca71264f1d477",
+                "Peerid":"9233974b052579f9f0eb815b03fa9483e709fd00",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode7",
                 "Coordinate":"6",
-                "Peerid":"2efd7ef279251253994b7e81ddea15bd80faf634",
+                "Peerid":"d5374cebcb3ad14e9866e7f57eb3a054f038ff22",
                 "Neighbor":""
             },
 {
                 "ShardName":"0",
                 "NodeName":"TTANode8",
                 "Coordinate":"7",
-                "Peerid":"d44946802f24753f1f5366b5ab9c6bb77a61631b",
-                "Neighbor":""
-               
-            }]
-,
-[{
-                "ShardName":"1",
-                "NodeName":"TTBNode1",
-                "Coordinate":"0",
-                "Peerid":"98f3f86f0d5c1623bef4ed13f1473aba8924a049",
+                "Peerid":"93093eeacc40bc733f9e553634c3ee4e0a064542",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode2",
-                "Coordinate":"1",
-                "Peerid":"6734fd145c9a1b821a4e6ef8b67fb2140dc3dffc",
+                "ShardName":"0",
+                "NodeName":"TTANode9",
+                "Coordinate":"8",
+                "Peerid":"ce42fd648c3f73a0f92d4215ff9a9b345852f8aa",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode3",
-                "Coordinate":"2",
-                "Peerid":"93ba93d04745c7527a7edc234cdc2b32b4fd5bc1",
+                "ShardName":"0",
+                "NodeName":"TTANode10",
+                "Coordinate":"9",
+                "Peerid":"b61c91891eb2aa3dc8b273e5ba2083525ed42397",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode4",
-                "Coordinate":"3",
-                "Peerid":"6281538822ea2addeb1930cdb63e1de650b8ba2a",
+                "ShardName":"0",
+                "NodeName":"TTANode11",
+                "Coordinate":"10",
+                "Peerid":"45a50eaa62ebc858837a340888f7d4408f7a56a3",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode5",
-                "Coordinate":"4",
-                "Peerid":"c7c0339f73415962332afa7584e4e30b23b1cc35",
+                "ShardName":"0",
+                "NodeName":"TTANode12",
+                "Coordinate":"11",
+                "Peerid":"be98bc012adeb5db73b5665a1eb4e76921904995",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode6",
-                "Coordinate":"5",
-                "Peerid":"5be4b26798f0d277fd998574a8b1c11d5ef841e0",
+                "ShardName":"0",
+                "NodeName":"TTANode13",
+                "Coordinate":"12",
+                "Peerid":"b2fe753282bac148beff723d32cd57b2015dc06c",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode7",
-                "Coordinate":"6",
-                "Peerid":"e010f331e4af5fe381877284ea6e14474001dc91",
+                "ShardName":"0",
+                "NodeName":"TTANode14",
+                "Coordinate":"13",
+                "Peerid":"d88afb1bdb1d084eab66dc117d77e814a96086ec",
                 "Neighbor":""
             },
 {
-                "ShardName":"1",
-                "NodeName":"TTBNode8",
-                "Coordinate":"7",
-                "Peerid":"bae3bc51770e16bc4d909346ba1f2aa146176d4e",
+                "ShardName":"0",
+                "NodeName":"TTANode15",
+                "Coordinate":"14",
+                "Peerid":"3c736a463be6e21adfdbbfdc3b3c0806fe1dc25a",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode16",
+                "Coordinate":"15",
+                "Peerid":"03a49ec2e08e3bc36650ac36380c78849b4d8381",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode17",
+                "Coordinate":"16",
+                "Peerid":"8f09864320ae257db3fa25bc01b2f7301efc06a3",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode18",
+                "Coordinate":"17",
+                "Peerid":"71210049857675e6e79644c96aea391cd260b7fb",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode19",
+                "Coordinate":"18",
+                "Peerid":"957fc78d3d4b18828662ef7d8a2ccb3be2d42717",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode20",
+                "Coordinate":"19",
+                "Peerid":"80f4038fa6427b440eacc39d1f2db4b8969e4ee5",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode21",
+                "Coordinate":"20",
+                "Peerid":"f8efc74a84e4be04dce8ab21dbfb744dab0529d6",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode22",
+                "Coordinate":"21",
+                "Peerid":"597f16ce7a25d605c25951b57e929830dd8a1376",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode23",
+                "Coordinate":"22",
+                "Peerid":"cc18d6800269c6fea8992c017d0de55c78ab371c",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode24",
+                "Coordinate":"23",
+                "Peerid":"c18bc5ea17832bef6c1ad175b69b49d1c8bc1b72",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode25",
+                "Coordinate":"24",
+                "Peerid":"afeee82f1fd810c3ad642f8ffd0d2f3c2e636571",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode26",
+                "Coordinate":"25",
+                "Peerid":"41a6f01ba9f8c58677a80701103d79ffb9c2719d",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode27",
+                "Coordinate":"26",
+                "Peerid":"99e0b9240e941be0ae79d0581fe6af9fe4c544e6",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode28",
+                "Coordinate":"27",
+                "Peerid":"52a897903366edfc15ac721863ee5698a7032617",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode29",
+                "Coordinate":"28",
+                "Peerid":"591d09c0e7748e449516040299d1c63cd8f66cb7",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode30",
+                "Coordinate":"29",
+                "Peerid":"c630da9f5803b490232f5e4b7a6f223a4de597ab",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode31",
+                "Coordinate":"30",
+                "Peerid":"20ec7e46f7d05be9c40e638fd12b23e55d65256d",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode32",
+                "Coordinate":"31",
+                "Peerid":"e563b164dc992b4c0e6f75c5bb8f53e73d9aafff",
                 "Neighbor":""
                
             }]
