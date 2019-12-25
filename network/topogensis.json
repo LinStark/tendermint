@@ -1,106 +1,117 @@
 [
 [{
+                "ShardName":"0",
                 "NodeName":"TTANode1",
                 "Coordinate":"0",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:13.134066557Z", "chain_id": "test-chain-9Zlwbh", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "6220AE8869B0BE293CC9AF4214EB69A4AB4AF19F", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "z8PuS005TJ65qmUz8csEpMePmJr+bgmer6dQv21mBdw=" }, "power": "10", "name": "TTANode1" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"C9B+KvVkdILFogoHPCS/yCOMefgywywoTXxkOTFV4whcEPCvXfZ73viKYdu8Bl+qZehWOEAfCqQqNlo+MTApvg=="}},
-                "PrivateKey":{
-  "address": "6220AE8869B0BE293CC9AF4214EB69A4AB4AF19F",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "z8PuS005TJ65qmUz8csEpMePmJr+bgmer6dQv21mBdw="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "8jx++kPQIZte8X7ku34Sl9SqSaPPcGeK4G90DgEvipzPw+5LTTlMnrmqZTPxywSkx4+Ymv5uCZ6vp1C/bWYF3A=="
-  }
-}
+                "Peerid":"7688351078294959d9b1538b531eefa31979e5f1",
+                "Neighbor":""
             },
 {
+                "ShardName":"0",
                 "NodeName":"TTANode2",
                 "Coordinate":"1",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:13.134066557Z", "chain_id": "test-chain-9Zlwbh", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "6220AE8869B0BE293CC9AF4214EB69A4AB4AF19F", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "z8PuS005TJ65qmUz8csEpMePmJr+bgmer6dQv21mBdw=" }, "power": "10", "name": "TTANode1" }, { "address": "F573717B49FDBE90D0A7CF131EE426FBACF1095E", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "cN8L1EmewOYJKExGTx1ieNRN7E0L3ZLmiJMsF24LTPE=" }, "power": "10", "name": "TTANode2" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"Kp3kxleJCaa+5NV5JFIty0hqYSROhaEUxGfjs2aXVqCufQb8OcuPxuxsiw9/9tz+kbIpK9Nxb8BhmMb2Y5IAYw=="}},
-                "PrivateKey":{
-  "address": "F573717B49FDBE90D0A7CF131EE426FBACF1095E",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "cN8L1EmewOYJKExGTx1ieNRN7E0L3ZLmiJMsF24LTPE="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "zvUn4r0P1706U1okZixMbGr+C3RC/Dhbb9us5IoR86xw3wvUSZ7A5gkoTEZPHWJ41E3sTQvdkuaIkywXbgtM8Q=="
-  }
-}
+                "Peerid":"36e3933d40d48d7bb1844aac64bb027b0356448f",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode3",
+                "Coordinate":"2",
+                "Peerid":"9308ea5aade60337b485d39ee4eee7e9951195d7",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode4",
+                "Coordinate":"3",
+                "Peerid":"5aa1f47eb0079356a13ccfee21ba333800c7bc18",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode5",
+                "Coordinate":"4",
+                "Peerid":"12084477fee06eb793869beb14d88b09fb9eda12",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode6",
+                "Coordinate":"5",
+                "Peerid":"f2f5de6a5fa534e8bf613f81c7fca71264f1d477",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode7",
+                "Coordinate":"6",
+                "Peerid":"2efd7ef279251253994b7e81ddea15bd80faf634",
+                "Neighbor":""
+            },
+{
+                "ShardName":"0",
+                "NodeName":"TTANode8",
+                "Coordinate":"7",
+                "Peerid":"d44946802f24753f1f5366b5ab9c6bb77a61631b",
+                "Neighbor":""
+               
             }]
 ,
 [{
+                "ShardName":"1",
                 "NodeName":"TTBNode1",
                 "Coordinate":"0",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:27.721589414Z", "chain_id": "test-chain-3FHOIK", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "430EDBEB3B1E7F4537A7869F9C664E1114B4C9BE", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "pKVC1I27N34NvZnKOYeHwX9rFwxOOdbL+wy0KIw6uwE=" }, "power": "10", "name": "TTBNode1" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"+Wyd/AZeJQN6f55/PAjaLfq1PPcUWoSf5MZRDvyk1rT2m8O70sp4yQCRbXGBci9bl1ok9k0asG1RNAG9b7WQ3Q=="}},
-                "PrivateKey":{
-  "address": "430EDBEB3B1E7F4537A7869F9C664E1114B4C9BE",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "pKVC1I27N34NvZnKOYeHwX9rFwxOOdbL+wy0KIw6uwE="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "3YZ4NUOiXddJbYxUGr7gz/oNKFgHIsiGvf43jmrh68WkpULUjbs3fg29mco5h4fBf2sXDE451sv7DLQojDq7AQ=="
-  }
-}
+                "Peerid":"98f3f86f0d5c1623bef4ed13f1473aba8924a049",
+                "Neighbor":""
             },
 {
+                "ShardName":"1",
                 "NodeName":"TTBNode2",
                 "Coordinate":"1",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:27.721589414Z", "chain_id": "test-chain-3FHOIK", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "430EDBEB3B1E7F4537A7869F9C664E1114B4C9BE", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "pKVC1I27N34NvZnKOYeHwX9rFwxOOdbL+wy0KIw6uwE=" }, "power": "10", "name": "TTBNode1" }, { "address": "FC7793EE707125E667105F22AAC824DB3CBF02CF", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "y/GEO2ROZK66LH0vyTbNXuvdY0d06zFGrzl1E7COxxM=" }, "power": "10", "name": "TTBNode2" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"bItv7gHXnUVCDdty89cWhB5XjNX2P6KUm3ifdRziFpfOcYzLuxgPVXnG4BqbJRwA0Ioo21bvEQrUpHaixONqgw=="}},
-                "PrivateKey":{
-  "address": "FC7793EE707125E667105F22AAC824DB3CBF02CF",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "y/GEO2ROZK66LH0vyTbNXuvdY0d06zFGrzl1E7COxxM="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "g8NHqPxfr5fkWGbd0a9+VUI/OM6GvMFhNaXhpHAFpxXL8YQ7ZE5krrosfS/JNs1e691jR3TrMUavOXUTsI7HEw=="
-  }
-}
-            }]
-,
-[{
-                "NodeName":"TTCNode1",
-                "Coordinate":"0",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:42.275366727Z", "chain_id": "test-chain-x3dryI", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "6B9E36E70022C76E2AE349A9CA603AC133D82871", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "6zvJyQwj6DJhf+s9dgUavz3NGpLpKnxy2uL0RnfKF4s=" }, "power": "10", "name": "TTCNode1" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"8aKhkqe61MQySQesCoPymBeqL7KZ9ja+ufnGsVOashlOgAZvLq16487DEY7Czj+GT6gS+Ee+EdS+TZ1QbqWJlw=="}},
-                "PrivateKey":{
-  "address": "6B9E36E70022C76E2AE349A9CA603AC133D82871",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "6zvJyQwj6DJhf+s9dgUavz3NGpLpKnxy2uL0RnfKF4s="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "ulO4iZyqzlRc5r5HSPB1d8xZxhfBEgiyGR2WKPnmjojrO8nJDCPoMmF/6z12BRq/Pc0akukqfHLa4vRGd8oXiw=="
-  }
-}
+                "Peerid":"6734fd145c9a1b821a4e6ef8b67fb2140dc3dffc",
+                "Neighbor":""
             },
 {
-                "NodeName":"TTCNode2",
-                "Coordinate":"1",
-                "Gensis":{ "genesis_time": "2019-12-23T06:24:42.275366727Z", "chain_id": "test-chain-x3dryI", "consensus_params": { "block": { "max_bytes": "22020096", "max_gas": "-1", "time_iota_ms": "1000" }, "evidence": { "max_age": "100000" }, "validator": { "pub_key_types": [ "ed25519" ] } }, "validators": [ { "address": "6B9E36E70022C76E2AE349A9CA603AC133D82871", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "6zvJyQwj6DJhf+s9dgUavz3NGpLpKnxy2uL0RnfKF4s=" }, "power": "10", "name": "TTCNode1" }, { "address": "9A8976683634D7844B494BAD5E25A7F977030F75", "pub_key": { "type": "tendermint/PubKeyEd25519", "value": "DU2HRd/o/6BVk1ZEJL71b1mLe4f2BFn9gUgQmXjZdH8=" }, "power": "10", "name": "TTCNode2" } ], "app_hash": "" },
-                "NodeKey":{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"ohDEX0cmOajRhcGztKiRjkZVN0j2a1M/qnaeAIpWcfrOsFffTSZVF0BCv0GIz9ApUcv5R0M2pWWJnROrIY3o+A=="}},
-                "PrivateKey":{
-  "address": "9A8976683634D7844B494BAD5E25A7F977030F75",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "DU2HRd/o/6BVk1ZEJL71b1mLe4f2BFn9gUgQmXjZdH8="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "BGWdkXAhIrKT5TAkKR98+7jeFiFM3p4CDmA+nVx3gtUNTYdF3+j/oFWTVkQkvvVvWYt7h/YEWf2BSBCZeNl0fw=="
-  }
-}
+                "ShardName":"1",
+                "NodeName":"TTBNode3",
+                "Coordinate":"2",
+                "Peerid":"93ba93d04745c7527a7edc234cdc2b32b4fd5bc1",
+                "Neighbor":""
+            },
+{
+                "ShardName":"1",
+                "NodeName":"TTBNode4",
+                "Coordinate":"3",
+                "Peerid":"6281538822ea2addeb1930cdb63e1de650b8ba2a",
+                "Neighbor":""
+            },
+{
+                "ShardName":"1",
+                "NodeName":"TTBNode5",
+                "Coordinate":"4",
+                "Peerid":"c7c0339f73415962332afa7584e4e30b23b1cc35",
+                "Neighbor":""
+            },
+{
+                "ShardName":"1",
+                "NodeName":"TTBNode6",
+                "Coordinate":"5",
+                "Peerid":"5be4b26798f0d277fd998574a8b1c11d5ef841e0",
+                "Neighbor":""
+            },
+{
+                "ShardName":"1",
+                "NodeName":"TTBNode7",
+                "Coordinate":"6",
+                "Peerid":"e010f331e4af5fe381877284ea6e14474001dc91",
+                "Neighbor":""
+            },
+{
+                "ShardName":"1",
+                "NodeName":"TTBNode8",
+                "Coordinate":"7",
+                "Peerid":"bae3bc51770e16bc4d909346ba1f2aa146176d4e",
+                "Neighbor":""
+               
             }]
 ]

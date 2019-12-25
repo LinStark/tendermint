@@ -1862,28 +1862,31 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	//如果交易中包含checkpoint，检查checkpoint本地的relay list中保存的是否完全一致。
 	//如果不一致投票为false
 	block := cs.ProposalBlock
-	if block.Data.Txs != nil {
-		for i := 0; i < len(block.Data.Txs); i++ {
-			data := block.Data.Txs[i]
-			encodeStr := hex.EncodeToString(data)
-			temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
-			//fmt.Println(string(temptx))
-			var t tp.TX
-			json.Unmarshal(temptx, &t)
-			if t.Txtype == "checkpoint" {
-				allTxs := cs.blockExec.GetAllTxs()
-				added = compareRelaylist(t,allTxs)
-				//如果是checkpoint，检查是否一致
-				break
+	if block !=nil {
+		if block.Data.Txs != nil {
+			for i := 0; i < len(block.Data.Txs); i++ {
+				data := block.Data.Txs[i]
+				encodeStr := hex.EncodeToString(data)
+				temptx, _ := hex.DecodeString(encodeStr) //得到真实的tx记录
+				//fmt.Println(string(temptx))
+				var t tp.TX
+				json.Unmarshal(temptx, &t)
+				if t.Txtype == "checkpoint" {
+					allTxs := cs.blockExec.GetAllTxs()
+					added = compareRelaylist(t,allTxs)
+					fmt.Println("added_____________",added)
+					//如果是checkpoint，检查是否一致
+					break
+				}
 			}
 		}
-	}
-	if !added {
-		// 如果验证失败，则返回
-		return
+		if !added {
+
+			// 如果验证失败，则返回
+			return
+		}
 	}
 	
-
 	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
 

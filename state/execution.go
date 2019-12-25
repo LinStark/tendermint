@@ -271,6 +271,7 @@ func (blockExec *BlockExecutor) CheckCommitedBlock(block *types.Block) ([]tp.TX,
 				//continue
 
 			} else if t.Txtype == "checkpoint" {
+				fmt.Println("checkpoint",t)
 				continue
 			}
 		}
@@ -315,7 +316,6 @@ func (blockExec *BlockExecutor) SendRelayTxs( /*line *myline.Line,*/ txs []tp.TX
 	for i := 0; i < len(shard_send); i++ {
 		if shard_send[i] != nil {
 			num := len(shard_send[i]) //发送到某分片所有跨片交易的数量，进行打包
-			fmt.Println("SendRelayTxs2")
 			tx_package = shard_send[i]
 			go blockExec.Send_Package(num, i, tx_package)
 
@@ -344,19 +344,15 @@ func (blockExec *BlockExecutor) Send_Package(num int, i int, tx_package []tp.TX)
 			//c2, rnd = myline.UseConnect(key, "ip")
 		}
 		index = int(key[0]) - 65
-		go blockExec.SendMessage(index, rnd, c2, tx_package)
+		blockExec.SendMessage(index, rnd, c2, tx_package)
 		
 	}
 }
 // sending tx to shard x
 func (blockExec *BlockExecutor) SendMessage(index int, rnd int, c *websocket.Conn, tx_package []tp.TX){
 	name := "TT"+string(index+65)+"Node2:26657"
-
-	for i:=0;i<len(tx_package);i++{
-		
-		client := *myclient.NewHTTP(name,"/websocket")
-		go client.BroadcastTxAsync(tx_package)
-	}
+	client := *myclient.NewHTTP(name,"/websocket")
+	client.BroadcastTxAsync(tx_package)
 }
 func (blockExec *BlockExecutor) Send_Message(index int, rnd int, c *websocket.Conn, tx_package []tp.TX) {
 	

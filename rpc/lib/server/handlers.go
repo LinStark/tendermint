@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	myline "github.com/tendermint/tendermint/line"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
+	myclient "github.com/tendermint/tendermint/client"
 	//useetcd "github.com/tendermint/tendermint/useetcd"
 )
 //var wg sync.WaitGroup
@@ -618,6 +619,11 @@ func (wsc *wsConnection) Context() context.Context {
 	return wsc.ctx
 }
 
+func (wsc *wsConnection) SendMessage(index int, rnd int, c *websocket.Conn, tx_package []identypes.TX){
+	name := "TT"+string(index+65)+"Node2:26657"
+		client := *myclient.NewHTTP(name,"/websocket")
+		go client.BroadcastTxAsync(tx_package)
+}
 func (wsc *wsConnection)Send_Package(num int,i int,tx_package []identypes.TX){
 	var c2 *websocket.Conn
 	var rnd int
@@ -627,12 +633,12 @@ func (wsc *wsConnection)Send_Package(num int,i int,tx_package []identypes.TX){
 		//fmt.Println("该次处理addtx数量为",num)
 		if tx_package[0].Txtype=="addtx"{
 			key=tx_package[0].Sender
-
+			
 			//fmt.Println("发往分片",key)
-			c2,rnd = myline.UseConnect(key,"ip")
+			// c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
-		wsc.Send_Message(index,rnd,c2,tx_package)
+		wsc.SendMessage(index,rnd,c2,tx_package)
 
 		addset[i] =append(addset[i][:0],addset[i][len(addset[i]):]...)
 		myline.Send_flag[i]=true
@@ -743,46 +749,13 @@ func (wsc *wsConnection)handlerTx(request types.RPCRequest,tx identypes.TX){
 		}else{
 			if tx.Txtype=="relaytx"{
 				tx.Txtype="addtx"
-				res, _ := json.Marshal(tx)//单条交易进行封装
-				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
-
-				if err != nil {
-					fmt.Printf("failed to encode params: %v\n", err)
-					os.Exit(1)
+				name := "TT"+tx.Sender+"Node2:26657"
+				tx_package:=[]identypes.TX{}
+				tx_package=append(tx_package,tx)
+				for i:=0;i<len(tx_package);i++{
+				client := *myclient.NewHTTP(name,"/websocket")
+				go client.BroadcastTxAsync(tx_package)
 				}
-				rawParamsJSON := json.RawMessage(paramsJSON)//这就是交易封装后的内容，传递到下一层进行处理
-				rc := types.RPCRequest{
-					JSONRPC:  "2.0",
-					Sender:   tx.Sender,
-					Receiver: tx.Receiver,
-					ID:       types.JSONRPCStringID("addtx"),
-					Method:   "broadcast_tx_async",
-					Params:   rawParamsJSON,
-				}
-				c,rnd:=myline.UseConnect(tx.Sender,"ip")
-				c.SetPingHandler(func(message string) error {
-					err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
-					if err == websocket.ErrCloseSent {
-						return nil
-					} else if e, ok := err.(net.Error); ok && e.Temporary() {
-						return nil
-					}
-					return err
-				})
-
-
-				err1:=c.WriteJSON(rc)
-
-				if err1 != nil {
-
-					myline.ReStart1(tx.Sender,rnd)
-					c.WriteJSON(rc)
-					time.Sleep(time.Millisecond*20)
-					myline.Flag_conn[tx.Sender][rnd] = false
-					return
-				}
-				time.Sleep(time.Millisecond*20)
-				myline.Flag_conn[tx.Sender][rnd] = false
 			}
 			return
 		}

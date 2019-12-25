@@ -184,7 +184,7 @@ func (c *HTTP) broadcastTX(route string, tx []tp.TX)  {
 	for i :=0;i<len(tx);i++{
 		data,_:=json.Marshal(tx[i])
 		result := new(ResultBroadcastTx)
-		go c.rpc.Call(route, map[string]interface{}{"tx": data}, result)
+		c.rpc.Call(route, map[string]interface{}{"tx": data}, result)
 		
 	}
 
