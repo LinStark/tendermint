@@ -18,6 +18,7 @@ import (
 	myline "github.com/tendermint/tendermint/line"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	myclient "github.com/tendermint/tendermint/client"
 )
 //-----------------------------------------------------------------------------
 // BlockExecutor handles block execution and state updates.
@@ -359,8 +360,13 @@ func (blockExec *BlockExecutor)Send_Package(num int,i int,tx_package []tp.TX){
 			c2,rnd = myline.UseConnect(key,"ip")
 		}
 		index = int(key[0])-65
-		blockExec.Send_Message(index,rnd,c2,tx_package)
+		blockExec.SendMessage(index,rnd,c2,tx_package)
 	}
+}
+func (blockExec *BlockExecutor) SendMessage(index int, rnd int, c *websocket.Conn, tx_package []tp.TX){
+	name := "TT"+string(index+65)+"Node2:26657"
+	client := *myclient.NewHTTP(name,"/websocket")
+	client.BroadcastTxAsync(tx_package)
 }
 func (blockExec *BlockExecutor)Send_Message(index int,rnd int,c *websocket.Conn,tx_package []tp.TX){
 
