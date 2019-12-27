@@ -19,7 +19,7 @@ import (
 var logger = log.NewNopLogger()
 
 func main() {
-
+ 
 	//durationInt表示持续时间
 	//txsRate 发送交易个数
 	//connections表示链接的个数
@@ -28,8 +28,9 @@ func main() {
 	//outputFormat 输出格式
 	//shard 分片
 	//broadcastTxmethod 传播方法
-	//allshard 全分片
-	var durationInt, txsRate, connections, txSize int
+	//allshard 全分片 
+	//relayrate 跨片比例
+	var durationInt, txsRate, connections, txSize,relayrate int
 	var verbose bool
 	var outputFormat, shard, broadcastTxMethod, allshard string
 
@@ -41,6 +42,7 @@ func main() {
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes, must be greater than or equal to 40.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flagSet.StringVar(&shard, "shard", "A", "shard of tendermint")
+	flagSet.IntVar(&relayrate, "rate", 2, "relay rate")
 
 	flagSet.StringVar(&allshard, "as", "A,B,C,D", "shard of tendermint")
 	flagSet.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
@@ -114,7 +116,8 @@ Examples:
 		txsRate,
 		txSize,
 		shard,
-		allshard,
+		allshard,		
+		relayrate,
 		"broadcast_tx_"+broadcastTxMethod)
 
 	// Stop upon receiving SIGTERM or CTRL-C.
@@ -184,13 +187,14 @@ func startTransacters(
 	txSize int,
 	shard string,
 	allshard string,
+	relayrate int,
 	broadcastTxMethod string) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(endpoints))
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate, txSize, shard, allshard, broadcastTxMethod)
+		t := newTransacter(e, connections, txsRate, txSize, shard, allshard, relayrate,broadcastTxMethod)
 		t.SetLogger(logger)
 		go func(i int) {
 			defer wg.Done()

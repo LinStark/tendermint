@@ -48,6 +48,7 @@ type transacter struct {
 	BroadcastTxMethod string
 	shard             string
 	allshard          string
+	relayrate        int
 
 	conns       []*websocket.Conn
 	connsBroken []bool
@@ -58,7 +59,7 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections, rate int, size int, shard string, allshard string, broadcastTxMethod string) *transacter {
+func newTransacter(target string, connections, rate int, size int, shard string, allshard string, relayrate int,broadcastTxMethod string) *transacter {
 	return &transacter{
 		Target:            target,
 		Rate:              rate,
@@ -67,6 +68,7 @@ func newTransacter(target string, connections, rate int, size int, shard string,
 		BroadcastTxMethod: broadcastTxMethod,
 		shard:             shard,
 		allshard:          allshard,
+		relayrate:        relayrate,
 		conns:             make([]*websocket.Conn, connections),
 		connsBroken:       make([]bool, connections),
 		logger:            log.NewNopLogger(),
@@ -207,7 +209,7 @@ func (t *transacter) sendLoop(connIndex int) {
 			for i := 0; i < t.Rate; i++ {
 				//update tx number of the tx, and the corresponding hex
 				//updateTx(tx, txHex, txNumber,send_shard,t.shard)
-				ntx := updateTx(txNumber, send_shard, t.shard)
+				ntx := updateTx(txNumber, send_shard, t.shard,t.relayrate)
 				//fmt.Println(string(ntx))
 
 				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": ntx})
@@ -357,13 +359,13 @@ func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Si
 }
 
 // warning, mutates input byte slice
-func updateTx(txNumber int, send_shard []string, shard string) []byte {
+func updateTx(txNumber int, send_shard []string, shard string,rate int) []byte {
 
 	t := time.Now()
 	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
 	content := shard + strconv.Itoa(txNumber) + timestamp
 	var res []byte
-	if txNumber%3 != 0 {
+	if txNumber%rate != 0 {
 		step := len(send_shard)
 		tx := &TX{
 			Txtype:   "relaytx",
