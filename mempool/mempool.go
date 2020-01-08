@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"bytes"
+	"container/heap"
 	"container/list"
 	"crypto/sha256"
 	"fmt"
@@ -13,14 +14,15 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	tp "github.com/tendermint/tendermint/identypes"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tp "github.com/tendermint/tendermint/identypes"
 )
+
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a
 // transaction doesn't exceeded the block size.
@@ -196,16 +198,18 @@ type Mempool struct {
 
 	metrics *Metrics
 }
+
 //--------------------------------------------
 //新增的跨片交易的状态数据库
-type relaytxDB struct{
-	relaytx []RTx  //RelayTx结构的切片
+type relaytxDB struct {
+	relaytx []RTx //RelayTx结构的切片
 }
 
-type RTx struct{
-	Tx tp.TX
+type RTx struct {
+	Tx     tp.TX
 	Height int
 }
+
 //-------------------------------------------
 
 // MempoolOption sets an optional parameter on the Mempool.
@@ -241,23 +245,24 @@ func NewMempool(
 	}
 	return mempool
 }
+
 //--------------------------------------------------------
 //新增函数
-func newrDB() relaytxDB{
+func newrDB() relaytxDB {
 	var rdb relaytxDB
 	var rtx []RTx
 	rdb.relaytx = rtx
 	return rdb
 }
 
-func  (mem *Mempool)AddRelaytxDB(tx  tp.TX){
+func (mem *Mempool) AddRelaytxDB(tx tp.TX) {
 	var rtx RTx
-	rtx.Tx=tx
-	rtx.Height=0
-	mem.rDB.relaytx = append(mem.rDB.relaytx,rtx)
+	rtx.Tx = tx
+	rtx.Height = 0
+	mem.rDB.relaytx = append(mem.rDB.relaytx, rtx)
 }
 
-func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
+func (mem *Mempool) RemoveRelaytxDB(tx tp.TX) {
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
 		if mem.rDB.relaytx[i].Tx.ID == tx.ID {
 			mem.rDB.relaytx = append(mem.rDB.relaytx[:i], mem.rDB.relaytx[i+1:]...)
@@ -266,35 +271,35 @@ func (mem *Mempool) RemoveRelaytxDB(tx  tp.TX){
 			break
 		}
 	}
-	
-	
+
 }
-func (mem *Mempool) UpdaterDB()([]tp.TX){
+func (mem *Mempool) UpdaterDB() []tp.TX {
 	//检查rDB中的状态，如果有一个区块高度是20，还没有被删除，那么需要重新发送tx，让其被确认
-	
-	var stx []tp.TX	
+
+	var stx []tp.TX
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
-		if mem.rDB.relaytx!=nil{
-			if (mem.rDB.relaytx[i].Height == 10)||( mem.rDB.relaytx[i].Height == 20) {
-				stx= append(stx,mem.rDB.relaytx[i].Tx)
-				mem.rDB.relaytx[i].Height=0	
-			}else {
-				mem.rDB.relaytx[i].Height =mem.rDB.relaytx[i].Height +1
+		if mem.rDB.relaytx != nil {
+			if (mem.rDB.relaytx[i].Height == 10) || (mem.rDB.relaytx[i].Height == 20) {
+				stx = append(stx, mem.rDB.relaytx[i].Tx)
+				mem.rDB.relaytx[i].Height = 0
+			} else {
+				mem.rDB.relaytx[i].Height = mem.rDB.relaytx[i].Height + 1
 			}
 		}
 	}
 	return stx
-	
+
 }
-func (mem *Mempool) GetAllTxs()([]tp.TX){
+func (mem *Mempool) GetAllTxs() []tp.TX {
 	var alltx []tp.TX
 	for i := 0; i < len(mem.rDB.relaytx); i++ {
-		if mem.rDB.relaytx!=nil{
-			alltx= append(alltx,mem.rDB.relaytx[i].Tx)
+		if mem.rDB.relaytx != nil {
+			alltx = append(alltx, mem.rDB.relaytx[i].Tx)
 		}
-	}	
+	}
 	return alltx
 }
+
 //----------------------------------------------------------
 // EnableTxsAvailable initializes the TxsAvailable channel,
 // ensuring it will trigger once every height when transactions are available.
@@ -549,6 +554,9 @@ func (mem *Mempool) addTx(memTx *mempoolTx) {
 	mem.txsMap.Store(txKey(memTx.tx), e)
 	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
 	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
+
+	// TODO 将当前的tx加到watch list里
+
 }
 
 // Called from:
@@ -689,15 +697,31 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
-	txs := make([]types.Tx, 0, mem.txs.Len())
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
+	txs := make([]types.Tx, mem.txs.Len())
+
+	// 加入优先级队列，按交易类型设置不同的优先级
+	pqueue := make(PriorityQueue, mem.txs.Len())
+	p := 100
+	for e, i := mem.txs.Front(), 0; e != nil; e, i = e.Next(), i+1 {
 		memTx := e.Value.(*mempoolTx)
+
+		// TODO get priority according to tx type
+		pqueue[i] = &Item{value: *memTx, index: i, priority: p}
+		p -= 1
+		fmt.Println("queueu size(+1): ", pqueue.Len())
+	}
+	heap.Init(&pqueue)
+
+	for pqueue.Len() > 0 {
+		memTx := heap.Pop(&pqueue).(*Item).value
+
 		// Check total size requirement
 		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
 		if maxBytes > -1 && totalBytes+int64(len(memTx.tx))+aminoOverhead > maxBytes {
 			return txs
 		}
 		totalBytes += int64(len(memTx.tx)) + aminoOverhead
+
 		// Check total gas requirement.
 		// If maxGas is negative, skip this check.
 		// Since newTotalGas < masGas, which
