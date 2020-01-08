@@ -6,6 +6,7 @@ import (
 	"net"
 	"reflect"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,9 +36,10 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	useetcd "github.com/tendermint/tendermint/useetcd"
-
 )
+
 var flag_conn = false
+
 //-----------------------------------------------------------------------------
 // Errors
 
@@ -960,12 +962,12 @@ func (cs *ConsensusState) sendLeaderToEtcd(address []byte) {
 
 	if cs.isProposer(address) {
 
-		e:=useetcd.NewEtcd()
+		e := useetcd.NewEtcd()
 		e.Update(getShard(), getIp())
-		myline.Judge_leader=true
+		myline.Judge_leader = true
 	}
 }
-func getIp()string{
+func getIp() string {
 	addrs, err := net.InterfaceAddrs()
 
 	if err != nil {
@@ -1450,14 +1452,14 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	//leader数据库不用再重建
 	/*
-	if !cs.isEqual(lastLeaderAddress) {
-		if cs.isLeader() {
-			e := useetcd.NewEtcd()
-			e.Update(getShard(), getIp())
-			fmt.Println("------change the leader--------")
-			cs.reactorViaCheckpoint(height)
+		if !cs.isEqual(lastLeaderAddress) {
+			if cs.isLeader() {
+				e := useetcd.NewEtcd()
+				e.Update(getShard(), getIp())
+				fmt.Println("------change the leader--------")
+				cs.reactorViaCheckpoint(height)
+			}
 		}
-	}
 	*/
 	// By here,
 	// * cs.Height has been increment to height+1
@@ -1513,7 +1515,7 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []tp.TX {
 				var t tp.TX
 				json.Unmarshal(temptx, &t)
 				if t.Txtype == "relaytx" {
-					
+
 					if t.Sender == tblock.Shard {
 						//如果是relaytx，并且是当前分片发起的，则加入到带确认数组
 						waitComTxs = append(waitComTxs, t)
@@ -1527,9 +1529,10 @@ func (cs *ConsensusState) CheckBlockTxInfo(maxHeight int64) []tp.TX {
 						lastCheckHeight, _ = strconv.ParseInt(t.Sender, 10, 64) //得到上一次检查点高度,保证只更新一次
 						flag = false
 					}
-					for j := 0; j < len(t.Content); j++ {
+					content_tmp := strings.Split(t.Content, ";;")
+					for j := 0; j < len(content_tmp); j++ {
 						var cpt tp.TX
-						json.Unmarshal([]byte(t.Content[j]), &cpt)
+						json.Unmarshal([]byte(content_tmp[j]), &cpt)
 						waitComTxs = append(waitComTxs, cpt) //TODO
 					}
 					fmt.Println("length of waitComTxs is ", len(waitComTxs), "lastCheckHeight", lastCheckHeight)
@@ -1565,8 +1568,7 @@ func conver2cptx(cpTxs []tp.TX, height int64) tp.TX {
 	return *cptx
 }
 
-
-func Send_message(tx tp.TX){
+func Send_message(tx tp.TX) {
 	res, _ := json.Marshal(tx)
 	paramsJSON, err := json.Marshal(map[string]interface{}{"tx": res})
 	if err != nil {
@@ -1580,9 +1582,9 @@ func Send_message(tx tp.TX){
 		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	}
-	c,rnd := myline.UseConnect(tx.Receiver,"ip")
+	c, rnd := myline.UseConnect(tx.Receiver, "ip")
 	c.WriteJSON(rc)
-	myline.Flag_conn[tx.Receiver][rnd]=false
+	myline.Flag_conn[tx.Receiver][rnd] = false
 }
 func Sendtxs(cptxs []tp.TX) []tp.TX {
 
@@ -1627,15 +1629,15 @@ func Sendcptx(tx tp.TX, flag int) {
 		Method:  "broadcast_tx_async",
 		Params:  rawParamsJSON,
 	}
-	if(flag_conn==false){
-		name := getIp()+":26657"
-		c,_,_:= myline.Connect(name)
+	if (flag_conn == false) {
+		name := getIp() + ":26657"
+		c, _, _ := myline.Connect(name)
 		c.WriteJSON(rc)
-		flag_conn=true
+		flag_conn = true
 	}
-	c,_:=myline.UseConnect("Localhost","localhost")
+	c, _ := myline.UseConnect("Localhost", "localhost")
 	c.WriteJSON(rc)
-	myline.Flag_conn["Localhost"][0]=false
+	myline.Flag_conn["Localhost"][0] = false
 }
 
 //-------------------------------------------------------------------------
@@ -1862,7 +1864,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	//如果交易中包含checkpoint，检查checkpoint本地的relay list中保存的是否完全一致。
 	//如果不一致投票为false
 	block := cs.ProposalBlock
-	if block !=nil {
+	if block != nil {
 		if block.Data.Txs != nil {
 			for i := 0; i < len(block.Data.Txs); i++ {
 				data := block.Data.Txs[i]
@@ -1873,8 +1875,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				json.Unmarshal(temptx, &t)
 				if t.Txtype == "checkpoint" {
 					allTxs := cs.blockExec.GetAllTxs()
-					added = compareRelaylist(t,allTxs)
-					fmt.Println("added_____________",added)
+					added = compareRelaylist(t, allTxs)
+					fmt.Println("added_____________", added)
 					//如果是checkpoint，检查是否一致
 					break
 				}
@@ -1886,7 +1888,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			return
 		}
 	}
-	
+
 	cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 	cs.evsw.FireEvent(types.EventVote, vote)
 
@@ -1987,20 +1989,21 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 	return
 }
+
 //验证list是否相同的函数
 //TODO 目前是要求全部相同，后续是否改成包含关系
-func compareRelaylist(t tp.TX,allTxs []tp.TX)(result bool) {
+func compareRelaylist(t tp.TX, allTxs []tp.TX) (result bool) {
 	var contentByte []byte
-	for i:=0;i<len(allTxs);i++{
+	for i := 0; i < len(allTxs); i++ {
 		//得到本身的relaylist的数据
-		marshalTx ,_:=json.Marshal(allTxs[i])
-		contentByte = append(contentByte,marshalTx...)
+		marshalTx, _ := json.Marshal(allTxs[i])
+		contentByte = append(contentByte, marshalTx...)
 	}
-	
+
 	localhash := sha256.Sum256(contentByte)
-	if localhash == t.ID{
+	if localhash == t.ID {
 		result = true
-	}else{
+	} else {
 		result = false
 	}
 	return result
