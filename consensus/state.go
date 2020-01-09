@@ -12,7 +12,7 @@ import (
 	//	"io"
 	"encoding/hex"
 	"encoding/json"
-	"strconv"
+	//"strconv"
 
 	//	"strings"
 	"crypto/sha256"
@@ -1478,6 +1478,7 @@ func (cs *ConsensusState) isLeader() (flag bool) {
 	flag = cs.isProposer(address)
 	return flag
 }
+/*
 func (cs *ConsensusState) reactorViaCheckpoint(height int64) {
 
 	//一次checkpoint,更新
@@ -1637,6 +1638,7 @@ func Sendcptx(tx tp.TX, flag int) {
 	c.WriteJSON(rc)
 	myline.Flag_conn["Localhost"][0]=false
 }
+*/
 
 //-------------------------------------------------------------------------
 

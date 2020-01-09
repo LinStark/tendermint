@@ -9,6 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/md5"
+	crand "crypto/rand"
+	"encoding/asn1"
+	"encoding/hex"
+	"math/big"
+
 	// it is ok to use math/rand here: we do not need a cryptographically secure random
 	// number generator here and we can run the tests a bit faster
 	"math/rand"
@@ -23,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
+	tp "github.com/tendermint/tendermint/identypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -297,59 +306,57 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-/*
-func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte) []byte {
-	t := time.Now()
-	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	headstr:="tx="+timestamp[:9]
-	tx := make([]byte, txSize)
-	binary.PutUvarint(tx[12:20], uint64(connIndex))
-	binary.PutUvarint(tx[20:28], uint64(txNumber))
-	copy(tx[28:40], hostnameHash[:12])
-	//binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
-	temp:=[]byte(headstr)
-	copy(tx[:12],temp)
-	// 40-* random data
 
-	return tx
+
+func bigint2str(r, s big.Int) string {
+	coor := ecdsaSignature{X: &r, Y: &s}
+	b, _ := asn1.Marshal(coor)
+	return hex.EncodeToString(b)
+}
+func digest(Content string) []byte {
+	origin := []byte(Content)
+
+	// 生成md5 hash值
+	digest_md5 := md5.New()
+	digest_md5.Write(origin)
+
+	return digest_md5.Sum(nil)
+}
+type ecdsaSignature struct {
+	X, Y *big.Int
+}
+func pub2string(pub ecdsa.PublicKey) string {
+
+	coor := ecdsaSignature{X: pub.X, Y: pub.Y}
+	b, _ := asn1.Marshal(coor)
+
+	return hex.EncodeToString(b)
 }
 
-// warning, mutates input byte slice
-func updateTx(tx []byte, txHex []byte, txNumber int,send_shard []string,shard string) {
+func createTxContent() (string,string) {
+	source := rand.NewSource(time.Now().Unix())
+    newrand := rand.New(source)
+    num:= newrand.Intn(1000)
+	priv, _ := ecdsa.GenerateKey(elliptic.P256(), crand.Reader)
+	pub_s := priv.PublicKey
 
-	binary.PutUvarint(tx[8:16], uint64(txNumber))
-	hexUpdate := make([]byte, 16)
-	hex.Encode(hexUpdate, tx[8:16])
-	t := time.Now()
-	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	headstr:="tx="+timestamp[:9]
-	for i := 16; i < 32; i++ {
-		txHex[i] = hexUpdate[i-16]
-	}
-	if(txNumber%2==0){
-		step:=len(send_shard)
-		txHead:="relaytx,"+shard+","+send_shard[txNumber%step]+"="
-		temp:=[]byte(txHead)
-		copy(txHex[0:12],temp)
-	}else{
-		temp:=[]byte(headstr)
-		copy(txHex[:12],temp)
-	}
+	priv_r, _ := ecdsa.GenerateKey(elliptic.P256(), crand.Reader)
+	pub_r := priv_r.PublicKey
+	tx_content := pub2string(pub_s) + "_" + pub2string(pub_r) + "_"+strconv.Itoa(num)
+	tr, ts, _ := ecdsa.Sign(crand.Reader, priv, digest(tx_content))
+	sig := bigint2str(*tr, *ts)
+	return tx_content,sig
+
 }
-
-
-*/
 func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Size]byte, shard string) []byte {
-
-	t := time.Now()
-	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	content := shard + strconv.Itoa(txNumber) + timestamp
-	tx := &TX{
+	content,sig := createTxContent()
+	tx := &tp.TX{
 		Txtype:   "tx",
 		Sender:   "",
 		Receiver: "",
 		ID:       sha256.Sum256([]byte(content)),
-		Content:  []string{content}}
+		Content:  content ,
+		TxSignature: sig}
 	res, _ := json.Marshal(tx)
 	restx := make([]byte, txSize)
 	txLength := len(res)
@@ -361,32 +368,33 @@ func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [sha256.Si
 // warning, mutates input byte slice
 func updateTx(txNumber int, send_shard []string, shard string,rate int) []byte {
 
-	t := time.Now()
-	timestamp := strconv.FormatInt(t.UTC().UnixNano(), 10)
-	content := shard + strconv.Itoa(txNumber) + timestamp
+	content,sig:= createTxContent()
 	var res []byte
 	if txNumber%rate != 0 {
 		step := len(send_shard)
-		tx := &TX{
+		tx := &tp.TX{
 			Txtype:   "relaytx",
 			Sender:   shard,
 			Receiver: send_shard[txNumber%step],
 			ID:       sha256.Sum256([]byte(content)),
-			Content:  []string{content}}
+			Content:  content,
+			TxSignature: sig }
 		res, _ = json.Marshal(tx)
 	} else {
-		tx := &TX{
+		tx := &tp.TX{
 			Txtype:   "tx",
 			Sender:   "",
 			Receiver: "",
 			ID:       sha256.Sum256([]byte(content)),
-			Content:  []string{content}}
+			Content:  content,
+			TxSignature: sig }
 		res, _ = json.Marshal(tx)
 	}
-
-	return res
-
+	return res	
+	
 }
+
+
 func sendaddtx(tx []byte) []byte {
 	var t TX
 	json.Unmarshal(tx, &t)
