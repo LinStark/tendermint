@@ -86,6 +86,19 @@ func (tx *TX) VerifySig() bool {
 	return ecdsa.Verify(pub, tx.digest(), coor.X, coor.Y)
 }
 
+func (tx *TX) GetPriority() int {
+	switch tx.Txtype {
+	case "checkpoint":
+		return 100;
+	case "addtx":
+		return 50;
+	case "relaytx":
+		return 75;
+	default:
+		return 0;
+	}
+}
+
 // 摘要格式： {Content}
 // 如果有多个content则合并为一个string，中间没有sep - 潜在问题，没有明确使用string[]的原因
 // 然后进行md5加密
@@ -99,6 +112,8 @@ func (tx *TX) digest() []byte {
 	return digest_md5.Sum(nil)
 }
 
+// ---------------------------------------------------------------------------------------------------
+// ecdsa coorinatie <=> byte/string
 func Content2PubKey(tx_content string) (*ecdsa.PublicKey, error) {
 	// 从content从提取出转出方公钥信息
 	strtmp := strings.Split(tx_content, SepTxContent)
@@ -138,4 +153,14 @@ func sig2bigInt(sig_str string) (*EcdsaCoordinate, error) {
 	}
 
 	return &EcdsaCoordinate{X: coor.X, Y: coor.Y}, nil
+}
+
+// ----------------------------------------------------------
+// TX utils
+func GetPriority(tx []byte) int {
+	txtmp, err := NewTX(tx)
+	if err != nil {
+		return 0;
+	}
+	return txtmp.GetPriority();
 }

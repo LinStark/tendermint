@@ -697,23 +697,21 @@ func (mem *Mempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	// TODO: we will get a performance boost if we have a good estimate of avg
 	// size per tx, and set the initial capacity based off of that.
 	// txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), max/mem.avgTxSize))
-	txs := make([]types.Tx, mem.txs.Len())
+	txs := make([]types.Tx, 0, mem.txs.Len())
 
 	// 加入优先级队列，按交易类型设置不同的优先级
-	pqueue := make(PriorityQueue, mem.txs.Len())
-	p := 100
+	pqueue := make(PriorityQueue, 0, mem.txs.Len())
+
 	for e, i := mem.txs.Front(), 0; e != nil; e, i = e.Next(), i+1 {
 		memTx := e.Value.(*mempoolTx)
 
-		// TODO get priority according to tx type
-		pqueue[i] = &Item{value: *memTx, index: i, priority: p}
-		p -= 1
-		fmt.Println("queueu size(+1): ", pqueue.Len())
+		pqueue = append(pqueue, &Item{value: *memTx, index: i, priority: tp.GetPriority(memTx.tx)})
 	}
 	heap.Init(&pqueue)
 
 	for pqueue.Len() > 0 {
 		memTx := heap.Pop(&pqueue).(*Item).value
+		fmt.Println("len: ", pqueue.Len())
 
 		// Check total size requirement
 		aminoOverhead := types.ComputeAminoOverhead(memTx.tx, 1)
