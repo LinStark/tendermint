@@ -8,7 +8,11 @@
 proxy_app = "tcp://127.0.0.1:26658"
 
 # A custom human readable name for this node
+<<<<<<< HEAD:networktopo/TopoANode4/config/config.toml
 moniker = "20d48c226f94"
+=======
+moniker = "c32e81c7bd4f"
+>>>>>>> zyj:network/node1/node12_data/config/config.toml
 
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel

@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"crypto/sha256"
 	"fmt"
+	"github.com/tendermint/tendermint/account"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,13 +14,14 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	tp "github.com/tendermint/tendermint/identypes"
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	tp "github.com/tendermint/tendermint/identypes"
+	//"github.com/tendermint/tendermint/state"
 )
 // PreCheckFunc is an optional filter executed before CheckTx and rejects
 // transaction if false is returned. An example would be to ensure that a
@@ -469,6 +471,21 @@ func (mem *Mempool) CheckTxWithInfo(tx types.Tx, cb func(*abci.Response), txInfo
 		return ErrTxInCache
 	}
 	// END CACHE
+
+	/*
+     * @Author: zyj
+     * @Desc: check tx
+     * @Date: 19.11.10
+     */
+	accountLog := account.NewAccountLog(tx)
+	if accountLog == nil {
+		return errors.New("交易解析失败")
+	}
+	checkRes := accountLog.Check()
+	if !checkRes {
+		return errors.New("不合法的交易")
+	}
+
 
 	// WAL
 	if mem.wal != nil {

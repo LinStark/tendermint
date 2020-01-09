@@ -4,11 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
+	"github.com/tendermint/tendermint/account"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"net"
 	"time"
-
-	"github.com/gorilla/websocket"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tp "github.com/tendermint/tendermint/identypes"
@@ -77,6 +77,13 @@ func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsen
 	for _, option := range options {
 		option(res)
 	}
+
+	/*
+	 * @Author: zyj
+	 * @Desc: transfer the db reference
+	 * @Date: 19.11.09
+	 */
+	account.InitAccountDB(res.db, res.logger)
 
 	return res
 }
@@ -544,6 +551,16 @@ func execBlockOnProxyApp(
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
 			return nil, err
+		}
+
+		/*
+         * @Author: zyj
+         * @Desc: update state
+         * @Date: 19.11.10
+         */
+		accountLog := account.NewAccountLog(tx)
+		if accountLog != nil {
+			accountLog.Save()
 		}
 	}
 

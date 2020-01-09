@@ -475,6 +475,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 
 			err := sw.DialPeerWithAddress(addr, persistent)
+			fmt.Println(addr)
 			if err != nil {
 				switch err.(type) {
 				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID, ErrCurrentlyDialingOrExistingAddress:
