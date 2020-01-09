@@ -1564,7 +1564,7 @@ func conver2cptx(cpTxs []tp.TX, height int64) tp.TX {
 		Sender:   strconv.FormatInt(height, 10), //用sender记录高度
 		Receiver: "",
 		ID:       sha256.Sum256([]byte("checkpoint")),
-		Content:  content}
+		Content:  strings.Join(content, ";;")}
 	return *cptx
 }
 
