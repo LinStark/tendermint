@@ -132,22 +132,22 @@ func _setState(key []byte, val []byte) {
 
 // 解析交易
 func _parseTx(tx []byte) *AccountLog{
-    txArgs := new(TxArg)
-    err := json.Unmarshal(tx, txArgs)
-    if err != nil {
-        logger.Error("交易解析失败")
+    args := strings.Split(string(tx), "_")
+    fmt.Println(args)
+    if len(args) != 3 {
+        logger.Error("参数个数错误")
         return nil
     }
-    accountLog := new(AccountLog)
-    accountLog.From = txArgs.Sender
-    accountLog.To = txArgs.Receiver
-    amount, err := strconv.Atoi(txArgs.Content)
+
+    amount, err := strconv.Atoi(args[2])
     if err != nil {
         logger.Error("解析失败，金额应为整数")
         return nil
     }
+    accountLog := new(AccountLog)
+    accountLog.From = args[0]
+    accountLog.To = args[1]
     accountLog.Amount = amount
-
     return accountLog
 }
 
